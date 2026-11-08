@@ -196,6 +196,29 @@ class AuthStore(context: Context) {
         BrowserSession.clearGoogleCookies()
     }
 
+    /**
+     * The Spotify `sp_dc` session cookie, pasted by the listener from their
+     * own logged-in web player. Encrypted like every other credential here:
+     * it grants full read access to the account's library.
+     */
+    var spotifySpdc: String?
+        get() = prefs.getString(KEY_SPOTIFY_SPDC, null)
+        set(value) = prefs.edit().putString(KEY_SPOTIFY_SPDC, value).apply()
+
+    /**
+     * The Spotify `sp_t` personalization/CSRF cookie, pasted alongside `sp_dc`
+     * (or captured from the same browser session). Optional: endpoints that need
+     * it degrade gracefully when it is absent.
+     */
+    var spotifySpt: String?
+        get() = prefs.getString(KEY_SPOTIFY_SPT, null)
+        set(value) = prefs.edit().putString(KEY_SPOTIFY_SPT, value).apply()
+
+    /** The complete Spotify cookie header captured from the logged-in WebView. */
+    var spotifyCookies: String?
+        get() = prefs.getString(KEY_SPOTIFY_COOKIES, null)
+        set(value) = prefs.edit().putString(KEY_SPOTIFY_COOKIES, value).apply()
+
     companion object {
         /**
          * Whether a cookie header carries a secret Innertube requests can be
@@ -230,5 +253,8 @@ class AuthStore(context: Context) {
         private const val KEY_DISCORD_TOKEN = "discord_token"
         private const val KEY_WEBDAV_PASSWORD = "webdav_password"
         private const val KEY_SMB_PASSWORD = "smb_password"
+        private const val KEY_SPOTIFY_SPDC = "spotify_sp_dc"
+        private const val KEY_SPOTIFY_SPT = "spotify_sp_t"
+        private const val KEY_SPOTIFY_COOKIES = "spotify_cookies"
     }
 }

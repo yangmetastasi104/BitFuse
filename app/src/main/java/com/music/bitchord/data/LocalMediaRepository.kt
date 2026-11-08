@@ -94,8 +94,10 @@ object LocalMediaRepository {
                     MediaStore.Audio.Media.DATE_ADDED,
                     MediaStore.Audio.Media.DATE_MODIFIED,
                 )
-                val selection = "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
-                val selectionArgs = arrayOf("%${DownloadStore.FOLDER}%")
+                val selection = "(" + DownloadStore.FOLDERS.joinToString(" OR ") {
+                    "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?"
+                } + ")"
+                val selectionArgs = DownloadStore.FOLDERS.map { "%$it%" }.toTypedArray()
 
                 context.contentResolver.query(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -159,7 +161,7 @@ object LocalMediaRepository {
                     }
                 }
             }
-        }.onFailure { Log.w(TAG, "Failed scanning Music/BitChord directory: ${it.message}") }
+        }.onFailure { Log.w(TAG, "Failed scanning Music/BitFuse directory: ${it.message}") }
 
         val filled = appDownloads.map { song ->
             val uri = song.localUri ?: return@map song

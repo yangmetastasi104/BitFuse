@@ -58,6 +58,11 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
     @kotlin.OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate() {
         super.onCreate()
+        // YouTube Music remains available for catalog metadata, never audio.
+        com.music.bitchord.data.innertube.YtmNetwork.playbackEnabled = false
+        // Automix analyzes the provider rendition that actually plays.
+        com.music.bitchord.playback.smart.AutomixAnalysisSource.youtubeOpusEnabled = false
+        com.music.bitchord.playback.smart.AutomixAnalysisSource.providerRenditionsAllowed = true
         // The player is drawn by the shared UI module; this is what it reads
         // underneath — settings, the Canvas decoder, outputs, the party.
         AndroidStreamHooks.installEarly()
@@ -95,6 +100,10 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
         SpotifyLibrary.auth = SpotifyLibrary.Auth {
             SpotifyToken.accessToken()?.let { SpotifyLibrary.Tokens(it, SpotifyToken.clientToken()) }
         }
+        SpotifyLibrary.cookieProvider = {
+            AppSettings.spotifyCookieHeader.value.takeIf { it.isNotBlank() }
+                ?: AppSettings.spotifySpdcToken.value.takeIf { it.isNotBlank() }?.let { "sp_dc=$it" }
+        }
         // The per-app language picker, which YouTube Music's `hl` follows.
         // Full tag (zh-Hant / zh-Hans preserved); Innertube maps to hl/gl.
         Innertube.appLanguage = { AppCompatDelegate.getApplicationLocales().get(0)?.toLanguageTag() }
@@ -110,14 +119,14 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
         // share one keystore master key and a first launch must not have two
         // threads racing to create it. Joined before onCreate returns, so
         // nothing that runs after startup can see any of them half open.
+        // The user's sources. YouTube Music is not seeded: with YTM network
+        // traffic disabled, a YouTube entry could never resolve.
         val backgroundInit = thread(name = "startup-init") {
             SourceRegistry.init(this)
             AndroidStreamHooks.initInnerTubeX(this)
-            // Its own directory: canvas clips are looping video, not audio, and
-            // belong in a cache AudioCache's own limit and eviction policy were
-            // never sized for. See CanvasCache's doc for why this one exists at
-            // all — it is the fix for canvas clips re-fetching the same few
-            // seconds of video from the network on every loop.
+            // Canvas clips are looping video, not audio, and belong in a
+            // cache AudioCache's own limit and eviction policy were never
+            // sized for.
             CanvasCache.init(this)
         }
         // Migration-safe: an old single cookie becomes the first encrypted
@@ -126,25 +135,24 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
         if (restoredSession != null && authStore.activeAccountId == null) {
             authStore.select(restoredSession.accountId, restoredSession.activeProfileId)
         }
+        // YouTube Music catalog session restore: the cookie feeds metadata
+        // reads (home/library/search personalization) only. Audio resolution
+        // never consults it — playback is provider-only.
         authStore.cookie = restoredSession?.cookie
         Innertube.cookie = restoredSession?.cookie
         // Which account that cookie actually acts as. Read here rather than on
         // demand so the answer is usually in hand before the first request needs
-        // it: a play registered under the wrong account is indistinguishable, to
-        // the listener, from one that was never registered at all. Fire and
-        // forget — every caller works without it, just less precisely.
+        // it. Fire and forget — every caller works without it, just less
+        // precisely.
         if (restoredSession != null) {
-            // After the cookie, never before: setting the cookie clears any
-            // channel the last session was acting as, so restoring the choice
-            // first would restore it into the value about to be wiped.
             restoredSession.profiles.firstOrNull { it.profileId == restoredSession.activeProfileId }
                 ?.let { Innertube.selectChannel(it.pageId, it.dataSyncId, it.authUser) }
             CoroutineScope(Dispatchers.IO).launch { Innertube.ensureSessionScope() }
         }
         AppSettings.init(this, authStore)
-        // Restores the addon token, so the first search after a process restart
-        // doesn't have to attest the device again.
-        com.music.bitchord.data.sources.addon.AddonAuth.init(this)
+        // Official Spotify OAuth session (PKCE). Legacy WebView tokens stay
+        // available in SpotifyLibrary until the dashboard client id is set.
+        com.music.bitchord.data.spotify.SpotifySession.init(this, authStore)
         // Before anything resolves a track: an addon with `checkValidLossless`
         // is gated on this, and the gate reads "no" until it has looked.
         com.music.bitchord.playback.audio.LosslessOutput.init(this)
@@ -175,10 +183,9 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
         // One cache directory can only be opened once per process, and
         // PlaybackService shares this one — so it's opened here, not there.
         AudioCache.init(this)
-        // The offscreen WebView that mints a Spotify access token from the
-        // listener's own session cookie needs a Context, and nothing in the
-        // suspend call chain that reaches it (a track's canvas lookup) has
-        // one to hand — see SpotifyToken's doc for why.
+        // Offscreen WebView that mints Spotify web-player tokens from the
+        // listener's own sp_dc cookie. Needs a Context; nothing in the
+        // suspend call chain that reaches it has one to hand.
         SpotifyToken.init(this)
         // A sideloaded update is just a new APK over the old one, so app data —
         // including whatever the old build left in the image cache — survives
@@ -201,6 +208,8 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
         // The public "apps open right now" count; see Presence.
         com.music.bitchord.data.presence.AndroidPresence.install(this)
         backgroundInit.join()
+        // Managed add-ons are refreshed only after the source registry is ready.
+        com.music.bitchord.data.sources.AddonCatalogSync.init(this)
     }
 
     /**
@@ -218,7 +227,7 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
                     chain.request().newBuilder()
                         .header(
                             "User-Agent",
-                            "BitChord/${BuildConfig.VERSION_NAME} (Android; +https://github.com/kushagrasinghx/BitChord)",
+                            "BitFuse/${BuildConfig.VERSION_NAME} (Android; +https://github.com/kushagrasinghx/BitChord)",
                         )
                         .build(),
                 )

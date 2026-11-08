@@ -69,8 +69,7 @@ val LocalPlayerFrost = staticCompositionLocalOf<PlayerFrost?> { null }
 @Composable
 internal fun FrostedPlayerFrame(
     modifier: Modifier,
-    /** [LocalPlayerChrome] for the player, not for what is drawn over it. */
-    chrome: Boolean,
+    tint: Color,
     frost: PlayerFrost?,
     live: Boolean,
     /** Read off composition, so a panel opening recomposes nothing here. */
@@ -92,13 +91,15 @@ internal fun FrostedPlayerFrame(
             }
         }
     }
-    Box(modifier.fillMaxSize()) {
-        val source = if (frost != null) with(frost) { Modifier.frostSource() } else Modifier
-        Box(Modifier.fillMaxSize().then(source)) {
-            CompositionLocalProvider(LocalPlayerChrome provides chrome, content = content)
-        }
-        CompositionLocalProvider(LocalPlayerFrost provides frost?.takeIf { !live }) {
-            overlays()
+    CompositionLocalProvider(LocalPlayerTint provides tint) {
+        Box(modifier.fillMaxSize()) {
+            val source = if (frost != null) with(frost) { Modifier.frostSource() } else Modifier
+            Box(Modifier.fillMaxSize().then(source)) {
+                content()
+            }
+            CompositionLocalProvider(LocalPlayerFrost provides frost?.takeIf { !live }) {
+                overlays()
+            }
         }
     }
 }

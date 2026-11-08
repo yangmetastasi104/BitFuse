@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">BitChord</string>
+    <string name="app_name">BitFuse</string>
     <string name="playback_channel_name">Teraz gra</string>
     <string name="download_channel_name">Pobrane</string>
     <string name="download_channel_description">Utwory są zapisywane do folderu Muzyka</string>
@@ -107,10 +107,10 @@
     <string name="dolby_atmos_open_failed">Nie można było otworzyć ustawień Dolby Atmos</string>
     <string name="update_available">Dostępna aktualizacja: v%1$s</string>
     <string name="software_update">Aktualizacja oprogramowania</string>
-    <string name="update_available_body">bitchord %1$s jest dostępny do pobrania.</string>
-    <string name="update_downloading_body">Pobieranie bitchord %1$s…</string>
-    <string name="update_ready_body">bitchord %1$s jest gotowy do zainstalowania.</string>
-    <string name="update_failed_body">Nie udało się pobrać bitchord %1$s.</string>
+    <string name="update_available_body">BitFuse %1$s jest dostępny do pobrania.</string>
+    <string name="update_downloading_body">Pobieranie BitFuse %1$s…</string>
+    <string name="update_ready_body">BitFuse %1$s jest gotowy do zainstalowania.</string>
+    <string name="update_failed_body">Nie udało się pobrać BitFuse %1$s.</string>
     <string name="download_now">Pobierz teraz</string>
     <string name="install_now">Zainstaluj teraz</string>
     <string name="later">Później</string>
@@ -138,7 +138,7 @@
     <string name="widget_previous">Poprzedni</string>
     <string name="widget_artwork">Okładka albumu</string>
     <string name="widget_nothing_played">Nic nie zostało odtworzone</string>
-    <string name="widget_open_bitchord">Open BitChord</string>
+    <string name="widget_open_bitchord">Open BitFuse</string>
     <string name="widget_preview_title">Tytuł utworu</string>
     <string name="widget_preview_artist">Artysta</string>
     <string name="widget_pill_label">Now playing 4×1</string>
@@ -165,7 +165,7 @@
     <string name="cancel_all">Anuluj wszystkie</string>
     <string name="language">Język</string>
     <string name="app_language">Język aplikacji</string>
-    <string name="app_language_description">Wybierz język używany przez BitChord.</string>
+    <string name="app_language_description">Wybierz język używany przez BitFuse.</string>
     <string name="english">Angielski</string>
     <string name="spanish">Hiszpański</string>
     <string name="french">Francuski</string>
@@ -210,8 +210,6 @@
     <string name="reduce_animation_subtitle">Zatrzymuje gradient głównego odtwarzacza zamiast dryfowania</string>
     <string name="reduce_dynamic_blur">Zmniejsz rozmycie dynamiczne</string>
     <string name="reduce_dynamic_blur_subtitle">Zastępuje matowe szkło jednolitymi wypełnieniami w całej aplikacji</string>
-    <string name="disable_blend_effects">Wyłącz efekty mieszania</string>
-    <string name="disable_blend_effects_subtitle">Pokazuje ikony, tekst i ciemne menu odtwarzacza w czystej bieli zamiast barwić je kolorem okładki</string>
     <string name="full_screen_cover_art">Pełnoekranowa okładka</string>
     <string name="animated_cover_art">Animowana okładka</string>
     <string name="synced_lyrics">Zsynchronizowany tekst</string>
@@ -242,8 +240,6 @@
     <string name="light">Jasny</string>
     <string name="dark">Ciemny</string>
     <string name="full_screen_cover_art_subtitle">Wyświetla okładkę na całym ekranie odtwarzacza zamiast kwadratowej okładki</string>
-    <string name="full_screen_detail_cover">Pełnoekranowa okładka albumu/playlisty</string>
-    <string name="full_screen_detail_cover_subtitle">Wyświetla okładki albumów i playlist do krawędzi strony zamiast w ramce</string>
     <string name="animated_cover_art_subtitle">Odtwarza animowaną okładkę dostępną w niektórych wydaniach zamiast statycznej</string>
     <string name="dont_repeat_songs_subtitle">AutoPlay nie zaproponuje utworu, który został już odtworzony lub zaproponowany w tej sesji</string>
     <string name="download_quality_subtitle">%1$s na utwór, niezależnie od połączenia</string>
@@ -256,10 +252,10 @@
     <string name="beta">Beta</string>
     <string name="refresh_rate">Częstotliwość odświeżania</string>
     <string name="high_performance_before_enabling">Przed włączeniem</string>
-    <string name="high_performance_battery_warning">Najpierw ustaw użycie baterii przez BitChord na Bez ograniczeń. Wyższe częstotliwości odświeżania zużywają więcej baterii, procesora i układu graficznego oraz mogą nagrzewać urządzenie.</string>
+    <string name="high_performance_battery_warning">Najpierw ustaw użycie baterii przez BitFuse na Bez ograniczeń. Wyższe częstotliwości odświeżania zużywają więcej baterii, procesora i układu graficznego oraz mogą nagrzewać urządzenie.</string>
     <string name="open_battery_settings">Otwórz ustawienia baterii</string>
     <string name="enable_high_performance_title">Włączyć tryb wysokiej wydajności?</string>
-    <string name="enable_high_performance_confirmation">Włącz tylko wtedy, gdy użycie baterii przez BitChord jest ustawione na Bez ograniczeń. Android nadal może ograniczyć częstotliwość odświeżania, gdy urządzenie jest gorące lub ma mało energii.</string>
+    <string name="enable_high_performance_confirmation">Włącz tylko wtedy, gdy użycie baterii przez BitFuse jest ustawione na Bez ograniczeń. Android nadal może ograniczyć częstotliwość odświeżania, gdy urządzenie jest gorące lub ma mało energii.</string>
     <string name="enable">Włącz</string>
     <string name="not_yet">Jeszcze nie</string>
     <string name="activity">Aktywność</string>
@@ -294,7 +290,7 @@
     <string name="discord_presence_footer">Karta aktualizuje się, gdy zmieni się utwór, pozycja lub stan odtwarzania. Znika, gdy odtwarzanie się zatrzyma.</string>
     <string name="discord_show_audio_quality">Pokaż jakość dźwięku</string>
     <string name="discord_show_audio_quality_subtitle">Parametry Hi-Res, bezstratne i Dolby na karcie statusu</string>
-    <string name="discord_sign_in_footer">Logowanie otwiera stronę logowania Discord. Nic nie jest wpisywane do BitChord.</string>
+    <string name="discord_sign_in_footer">Logowanie otwiera stronę logowania Discord. Nic nie jest wpisywane do BitFuse.</string>
     <string name="discord_token">Token Discord</string>
     <string name="discord_token_description">Wklej token swojego konta Discord. Pozostaje on zaszyfrowany na tym urządzeniu i jest wysyłany tylko do Discorda.</string>
     <string name="discord_token_rejected">Discord odrzucił ten token.</string>
@@ -329,7 +325,7 @@
     <string name="downloads_finished">Pobieranie · zakończone</string>
     <string name="downloading_progress">Pobieranie · %1$d%%</string>
     <string name="starting">Rozpoczynanie</string>
-    <string name="saved_to_bitchord_folder">Zapisano w Music/BitChord</string>
+    <string name="saved_to_bitchord_folder">Zapisano w Music/BitFuse</string>
     <string name="nothing_downloading">Nic się nie pobiera</string>
     <string name="nothing_to_explore">Nie ma teraz nic do odkrycia</string>
     <string name="no_youtube_music_results">Brak wyników z YouTube Music</string>
@@ -421,7 +417,7 @@
     <string name="sleep_timer_custom">Własny</string>
     <string name="start_sleep_timer">Uruchom minutnik</string>
     <string name="sources_no_lossless">Żadne włączone źródło nie może dostarczyć bezstratnego dźwięku. Dodaj moduł niestandardowy, aby odtwarzać dostępne pliki bezstratne bez transkodowania.</string>
-    <string name="sources_order_footer">Jeśli źródło nie ma utworu lub jest niedostępne, BitChord próbuje następne. Źródła przed YouTube mogą je zastąpić, gdy znajdą lepszą wersję.</string>
+    <string name="sources_order_footer">Jeśli źródło nie ma utworu lub jest niedostępne, BitFuse próbuje następne. Źródła przed YouTube mogą je zastąpić, gdy znajdą lepszą wersję.</string>
     <string name="sources_order_header">Źródła, sprawdzane w tej kolejności</string>
     <string name="sources_quality_capped">To połączenie jest ustawione poniżej Wysokiej jakości, więc strumienie są transkodowane. Pobierania pozostają nienaruszone.</string>
     <string name="jiosaavn_mismatch_warning">Może dopasować złą wersję utworu. Włączasz na własne ryzyko.</string>
@@ -466,7 +462,7 @@
     <string name="biggest_day_note">Twój najlepszy dzień to %1$s z %2$s muzyki.</string>
     <string name="close_replay">Zamknij Replay</string>
     <string name="couldnt_draw_picture">Nie można utworzyć obrazka</string>
-    <string name="default_replay_holder">Słuchacz BitChord</string>
+    <string name="default_replay_holder">Słuchacz BitFuse</string>
     <string name="different_albums">Różne albumy</string>
     <string name="genres_pending">Gatunki pojawią się w miarę wzrostu historii słuchania</string>
     <string name="hour_am">%1$d AM</string>
@@ -496,7 +492,7 @@
     <string name="replay_artist_end"> ciągle powracał.</string>
     <string name="replay_artist_focus">Jeden artysta</string>
     <string name="replay_artist_start">Przez cały miesiąc, </string>
-    <string name="replay_empty_description">Posłuchaj trochę więcej, a BitChord przekształci twoją historię w Replay.</string>
+    <string name="replay_empty_description">Posłuchaj trochę więcej, a BitFuse przekształci twoją historię w Replay.</string>
     <string name="replay_genre_end"> ukształtowały twoje brzmienie.</string>
     <string name="replay_genre_focus">Twoje gatunki</string>
     <string name="replay_genre_start">Razem, </string>
@@ -551,7 +547,7 @@
     <string name="webdav_subtitle">Muzyka na twoim serwerze</string>
     <string name="webdav_not_configured">Połącz serwer w Źródłach</string>
     <string name="webdav_empty">Nie znaleziono plików audio na serwerze WebDAV. Sprawdź adres URL w Ustawieniach.</string>
-    <string name="webdav_description">Wskaż BitChord folder z muzyką WebDAV – katalog Muzyka w Nextcloud lub dowolny serwer obsługujący WebDAV.</string>
+    <string name="webdav_description">Wskaż BitFuse folder z muzyką WebDAV – katalog Muzyka w Nextcloud lub dowolny serwer obsługujący WebDAV.</string>
     <string name="webdav_server_url">Adres URL serwera</string>
     <string name="webdav_server_url_hint">https://cloud.example.com/remote.php/dav/files/user/Music</string>
     <string name="webdav_disconnect">Rozłącz</string>
@@ -568,7 +564,7 @@
     <string name="smb_subtitle">Muzyka w udziale sieciowym</string>
     <string name="smb_not_configured">Połącz udział w Źródłach</string>
     <string name="smb_empty">Nie znaleziono plików audio w udziale SMB. Sprawdź serwer w Źródłach.</string>
-    <string name="smb_description">Wskaż BitChord udostępniony folder z muzyką – NAS lub udział Windows przez SMB.</string>
+    <string name="smb_description">Wskaż BitFuse udostępniony folder z muzyką – NAS lub udział Windows przez SMB.</string>
     <string name="smb_server_hint">nas.local or 192.168.1.10:4445</string>
     <string name="smb_share_hint">Nazwa udziału, np. Music</string>
     <string name="smb_folder_hint">Folder (opcjonalnie)</string>
@@ -613,7 +609,7 @@
     <string name="no_listening_history">brak historii odtwarzania</string>
     <string name="no_local_albums">Nic stąd jeszcze nie należy do albumu ani playlisty. Pobierz cały album lub playlistę, a pojawi się tutaj.</string>
     <string name="play_your_replay">Odtwórz swój Replay</string>
-    <string name="counted_on_device_with_bitchord">Obliczono na tym urządzeniu z BitChord</string>
+    <string name="counted_on_device_with_bitchord">Obliczono na tym urządzeniu z BitFuse</string>
     <string name="this_month">Ten miesiąc</string>
     <string name="this_year">Ten rok</string>
     <string name="all_time">Cały czas</string>
@@ -753,7 +749,7 @@
     <string name="listen_together_code">Kod imprezy</string>
     <string name="listen_together_code_footer">Przeczytaj go na głos albo wyślij. Liter O i I nie używamy, więc „o” to zawsze zero.</string>
     <string name="copy_code">Kopiuj kod</string>
-    <string name="listen_together_share_text">Posłuchaj ze mną w BitChord — kod imprezy %1$s</string>
+    <string name="listen_together_share_text">Posłuchaj ze mną w BitFuse — kod imprezy %1$s</string>
     <string name="listen_together_now_playing">Teraz odtwarzane</string>
     <string name="listen_together_nothing_playing">Jeszcze nic nie gra</string>
     <string name="listen_together_listening">Słucha · %1$d z %2$d</string>
@@ -790,7 +786,7 @@
     <string name="listen_together_custom_server_dialog_message">Ta impreza działa na zewnętrznym serwerze:\n\n%1$s\n\nCzy chcesz zmienić serwer imprez i dołączyć do imprezy %2$s?</string>
     <string name="listen_together_custom_server_switch_and_join">Zmień i dołącz</string>
     <string name="listen_together_official_server_dialog_title">Przełączyć na oficjalny serwer?</string>
-    <string name="listen_together_official_server_dialog_message">Ta impreza działa na oficjalnym serwerze BitChord.\n\nCzy chcesz wrócić na oficjalny serwer i dołączyć do imprezy %1$s?</string>
+    <string name="listen_together_official_server_dialog_message">Ta impreza działa na oficjalnym serwerze BitFuse.\n\nCzy chcesz wrócić na oficjalny serwer i dołączyć do imprezy %1$s?</string>
     <string name="listen_together_switch_failed_stayed_in_party">Nie udało się dołączyć do imprezy: %1$s. Pozostajesz na imprezie %2$s.</string>
     <string name="listen_together_switch_failed">Nie udało się dołączyć do imprezy: %1$s.</string>
     <string name="listen_together_ping">%1$d ms</string>
@@ -833,6 +829,7 @@
 
     <string name="addon_url_description">Wklej adres URL wtyczki — katalog główny lub manifest.json.</string>
 
+    <string name="advanced_options">Opcje zaawansowane i eksperymentalne</string>
 
     <string name="automix_mode_balanced">Zrównoważony</string>
 
@@ -898,14 +895,9 @@
     <string name="playlist_sync_done_title">Dodano do %1$s: %2$d</string>
     <string name="playlist_updates_channel">Aktualizacje playlist</string>
 
-    <string name="player_theme">Motyw odtwarzacza</string>
-    <string name="player_theme_default">Domyślny</string>
-    <string name="player_theme_legacy">Klasyczny</string>
-    <string name="player_theme_simple">Prosty</string>
-    <string name="player_theme_default_subtitle">Kolory okładki ciągną się pod nią</string>
-    <string name="player_theme_simple_subtitle">Rozmyta okładka za całym odtwarzaczem</string>
+    <string name="legacy_mesh_gradient">Klasyczny gradient siatkowy</string>
 
-    <string name="player_theme_legacy_subtitle">Przywraca płynne plamy kolorów z wersji v1.5</string>
+    <string name="legacy_mesh_gradient_subtitle">Przywraca płynne plamy kolorów z wersji v1.5</string>
 
     <string name="liquid_glass">Płynne szkło</string>
 
@@ -1047,7 +1039,7 @@
 
     <string name="source_skipped_by_quality">Nie używane na %1$s · jakość ustawiona na %2$s</string>
 
-    <string name="source_unrecognised">BitChord nie rozpoznał tego linku</string>
+    <string name="source_unrecognised">BitFuse nie rozpoznał tego linku</string>
 
     <string name="start_radio">Uruchom radio</string>
 
@@ -1082,7 +1074,7 @@
 
     <string name="auto_login_title">Sign in to YouTube on your phone</string>
 
-    <string name="auto_login_subtitle">Open BitChord on your phone to sign in</string>
+    <string name="auto_login_subtitle">Open BitFuse on your phone to sign in</string>
 
     <string name="auto_empty_recents_title">No recent songs</string>
 
@@ -1114,21 +1106,11 @@
 
 
 
-    <string name="content_preferences">Content Preferences</string>
-    <string name="hide_recents">Hide Recents</string>
-    <string name="hide_home_videos">Hide videos from Home</string>
-    <string name="hide_home_videos_subtitle">Shelves of only videos go too. Search, artists and playlists still show them</string>
-    <string name="hide_top_picks">Hide Top Picks for You</string>
-    <string name="hide_home_moods">Hide Find Your Mood</string>
-    <string name="square_video_thumbnails">Square video thumbnails</string>
-    <string name="square_video_thumbnails_subtitle">Show music videos as squares everywhere, including the player</string>
-    <string name="prefer_music_only">Prefer music-only version</string>
-    <string name="prefer_music_only_subtitle">Music videos play as their audio version, and the next track in the queue is converted ahead of time so Automix and crossfade work</string>
     <string name="smart_version_alignment">Inteligentne dopasowanie dźwięku</string>
 
     <string name="smart_version_alignment_subtitle">Analizuje ścieżkę dźwiękową, by idealnie zgrać moment utworu (np. omijając intro w wideo)</string>
 
-    <string name="equalizer_footer">Shapes the sound inside BitChord, before it reaches the system.</string>
+    <string name="equalizer_footer">Shapes the sound inside BitFuse, before it reaches the system.</string>
 
     <string name="equalizer_dynamic">Dynamic</string>
 
@@ -1171,7 +1153,7 @@
 
     <string name="system_equalizer_subtitle">Your device\'s own panel</string>
 
-    <string name="system_equalizer_footer">Runs after BitChord\'s, on the whole audio session. Using both applies both.</string>
+    <string name="system_equalizer_footer">Runs after BitFuse\'s, on the whole audio session. Using both applies both.</string>
 
     <string name="eq_preset_flat">Flat</string>
 
@@ -1313,8 +1295,6 @@
 
 
     <string name="source_needs_lossless_output">Wymaga wyjścia bezstratnego · użyj urządzenia obsługującego dźwięk bezstratny</string>
-    <string name="source_needs_update">Ten dodatek jest nieaktualny. Nadal działa, ale poproś jego twórcę o aktualizację zgodnie z najnowszą dokumentacją dodatków BitChord.</string>
-    <string name="source_outdated">Nieaktualny dodatek</string>
     <string name="source_needs_lossless_bt_codec">Wymaga wyjścia bezstratnego · Bluetooth używa %1$s; użyj urządzenia obsługującego dźwięk bezstratny</string>
     <string name="source_needs_lossless_bt_unknown">Wymaga wyjścia bezstratnego · nie można ustalić, jaki kodek Bluetooth jest używany</string>
     <string name="source_downloads_on">Pobieranie dozwolone</string>
@@ -1365,6 +1345,18 @@
     <string name="spotify_sign_in">Zaloguj się przez Spotify</string>
     <string name="spotify_use_spdc_token">Użyj tokena sp_dc</string>
     <string name="spotify_track_unavailable">Nie znaleziono tego utworu w YouTube Music</string>
+    <string name="equalizer_parametric">Parametryczny</string>
+    <string name="equalizer_parametric_count">Liczba pasm</string>
+    <string name="equalizer_parametric_count_footer">Dziesięć pasm ma szerokość oktawy i stykają się krawędziami, jak w sprzętowym korektorze. Dziewiętnaście leży bliżej siebie, więc zmiana obejmuje mniej otaczającego widma.</string>
+    <string name="equalizer_bands_10">10 pasm</string>
+    <string name="equalizer_bands_19">19 pasm</string>
+    <string name="equalizer_parametric_bands">Krzywa</string>
+    <string name="equalizer_parametric_footer">Każde pasmo ma własne centrum, szerokość i wzmocnienie. Dotknij pasma, aby przesunąć je w widmie lub zmienić jego szerokość.</string>
+    <string name="equalizer_band">Pasmo %1$d</string>
+    <string name="equalizer_band_shape">%1$s Hz · Q %2$s</string>
+    <string name="equalizer_band_frequency">Częstotliwość</string>
+    <string name="equalizer_band_q">Szerokość (Q)</string>
+    <string name="equalizer_band_footer">Q określa szerokość pasma. Niskie wartości poruszają fragment widma wokół centrum; wysokie zostawiają wąskie wycięcie i prawie nic więcej.</string>
     <string name="artist_signatures">Podpisy artystów</string>
     <string name="artist_signatures_subtitle">Pokazuje własnoręczny podpis, gdy Apple Music nie ma logo tytułowego</string>
     <string name="artist_signatures_url">Adres URL interfejsu API podpisów</string>
@@ -1386,7 +1378,7 @@
     <string name="replay_period_monthly">Miesiąc</string>
     <string name="replay_period_yearly">Rok</string>
     <string name="replay_period_lifetime">Cały czas</string>
-    <string name="onboarding_title">Miliony utworów w streamingu w BitChord</string>
+    <string name="onboarding_title">Miliony utworów w streamingu w BitFuse</string>
     <string name="onboarding_name_prompt">Jak mamy się do ciebie zwracać?</string>
     <string name="onboarding_name_hint">Twoje imię</string>
     <string name="onboarding_name_footer">Znajomi zobaczą je podczas Wspólnego słuchania. Możesz je później zmienić w Ustawieniach.</string>
@@ -1396,7 +1388,7 @@
     <string name="onboarding_sign_in_google">Zaloguj się przez Google</string>
     <string name="onboarding_skip_sign_in">Pomiń logowanie</string>
     <string name="onboarding_back">Wstecz</string>
-    <string name="wear_os_section">BitChord na Wear OS</string>
+    <string name="wear_os_section">BitFuse na Wear OS</string>
     <string name="wear_os_page_title">Wear OS</string>
     <string name="wear_os_your_watches">Twoje zegarki</string>
     <string name="wear_os_value_none">Brak zegarka</string>
@@ -1406,7 +1398,7 @@
     <string name="wear_os_no_watch">Brak połączonego zegarka</string>
     <string name="wear_os_no_watch_subtitle">Najpierw sparuj zegarek Wear OS z tym telefonem w jego aplikacji towarzyszącej.</string>
     <string name="wear_os_checking">Sprawdzanie…</string>
-    <string name="wear_os_not_installed">BitChord nie jest zainstalowany na tym zegarku</string>
+    <string name="wear_os_not_installed">BitFuse nie jest zainstalowany na tym zegarku</string>
     <string name="wear_os_up_to_date">Aktualna · %1$s</string>
     <string name="wear_os_update_available">Dostępna aktualizacja</string>
     <string name="wear_os_unknown">Zainstalowano · nie udało się sprawdzić wersji</string>
@@ -1423,7 +1415,7 @@
     <string name="wear_os_searching">Szukanie zegarka w sieci Wi-Fi…</string>
     <string name="wear_os_found">Znaleziono zegarek</string>
     <string name="wear_os_pairing">Parowanie…</string>
-    <string name="wear_os_installing">Instalowanie BitChord na zegarku…</string>
+    <string name="wear_os_installing">Instalowanie BitFuse na zegarku…</string>
     <string name="wear_os_installed">Zainstalowano. Możesz ponownie wyłączyć debugowanie bezprzewodowe.</string>
     <string name="wear_os_failed">To nie zadziałało (%1$s). Sprawdź kod i spróbuj ponownie.</string>
     <string name="wear_os_unsupported">Instalacja na zegarku wymaga na tym telefonie Androida 11 lub nowszego.</string>
@@ -1453,7 +1445,6 @@
     <string name="direct_source_stream">Bezpośredni strumień ze źródła</string>
     <string name="find_your_mood">Znajdź swój nastrój</string>
     <string name="progressive_blur">Stopniowe rozmycie</string>
-    <string name="glass_performance">Lepsza wydajność szkła</string>
     <string name="remove_from_history">Usuń z historii</string>
     <string name="remove_from_history_failed">Nie udało się usunąć z historii</string>
     <string name="addon_blocked_title">Nie można odtworzyć tego utworu</string>
@@ -1472,8 +1463,8 @@
     <string name="font_footer">Klasyczna przywraca grubszą i ciaśniejszą czcionkę, której aplikacja używała przed dopasowaniem do Apple Music.</string>
     <string name="bit_perfect_output">Wyjście bit-perfect</string>
     <string name="bit_perfect_bypassed_footer">Wyjście bit-perfect jest gotowe, więc wyszarzone ustawienia są pomijane, a wersje Dolby Atmos nie są pobierane. Zadziałają ponownie po odłączeniu DAC lub wyłączeniu trybu.</string>
-    <string name="bit_perfect_sheet_warning">Wysyła utwór do DAC bez zmian. Equalizer, normalizacja głośności, crossfade, Automix, szybkość odtwarzania i głośność BitChord są pomijane.</string>
-    <string name="bit_perfect_mode_off_subtitle">Dźwięk przechodzi przez mikser Androida i efekty BitChord.</string>
+    <string name="bit_perfect_sheet_warning">Wysyła utwór do DAC bez zmian. Equalizer, normalizacja głośności, crossfade, Automix, szybkość odtwarzania i głośność BitFuse są pomijane.</string>
+    <string name="bit_perfect_mode_off_subtitle">Dźwięk przechodzi przez mikser Androida i efekty BitFuse.</string>
     <string name="bit_perfect_mode_usb_android">DAC USB</string>
     <string name="bit_perfect_mode_usb_android_subtitle">Android 14 otwiera DAC z częstotliwością i głębią bitową każdego utworu, bez miksowania i resamplingu.</string>
     <string name="bit_perfect_requires_android_14">Wymaga Androida 14 lub nowszego</string>
@@ -1481,13 +1472,13 @@
     <string name="bit_perfect_mode_dap_exclusive_subtitle">Do odtwarzaczy muzyki z własnym DAC. Otwiera wyjście słuchawkowe lub liniowe na wyłączność z częstotliwością każdego utworu. Nie każde urządzenie udostępnia tryb wyłączny.</string>
     <string name="bit_perfect_requires_android_8_1">Wymaga Androida 8.1 lub nowszego</string>
     <string name="bit_perfect_mode_usb_direct">DAC USB (sterownik bezpośredni)</string>
-    <string name="bit_perfect_mode_usb_direct_subtitle">BitChord sam obsługuje DAC, w każdej wersji Androida, i ustawia głośność na DAC. Prosi o uprawnienia USB. Może grać znacznie głośniej niż zwykłe wyjście.</string>
+    <string name="bit_perfect_mode_usb_direct_subtitle">BitFuse sam obsługuje DAC, w każdej wersji Androida, i ustawia głośność na DAC. Prosi o uprawnienia USB. Może grać znacznie głośniej niż zwykłe wyjście.</string>
     <string name="dac_volume">Głośność DAC</string>
     <string name="dac_volume_subtitle">Ustawiana na samym DAC; muzyka nie jest skalowana</string>
     <string name="usb_allow_fixed_volume">Zezwalaj na DAC bez regulacji głośności</string>
     <string name="usb_allow_fixed_volume_subtitle">W przeciwnym razie taki DAC gra przez zwykłe wyjście</string>
     <string name="usb_allow_fixed_volume_confirm_title">Odtwarzać w pełnej skali?</string>
-    <string name="usb_allow_fixed_volume_confirm_message">BitChord nie może ustawić głośności tego typu DAC, więc gra on w pełnej skali, a głośność reguluje tylko jego własne pokrętło, jeśli je ma. Na czułych słuchawkach może to być niebezpiecznie głośne.</string>
+    <string name="usb_allow_fixed_volume_confirm_message">BitFuse nie może ustawić głośności tego typu DAC, więc gra on w pełnej skali, a głośność reguluje tylko jego własne pokrętło, jeśli je ma. Na czułych słuchawkach może to być niebezpiecznie głośne.</string>
     <string name="convert_for_limited_dac">Konwertuj dla słabszych DAC</string>
     <string name="convert_for_limited_dac_subtitle">Konwertuje utwory powyżej limitu Twojego DAC do jego najwyższego formatu. Utwory mogą uruchamiać się dłużej i nie będą bit-perfect względem oryginału.</string>
     <string name="bit_perfect_confirm_title">Włączyć wyjście bit-perfect?</string>
@@ -1497,4 +1488,6 @@
     <string name="bit_perfect_status_inexact">%1$s · niedokładne: to źródło nie jest bezstratnym PCM</string>
     <string name="bit_perfect_status_waiting">Oczekiwanie na bezstratny utwór na obsługiwanym wyjściu</string>
     <string name="bit_perfect_status_unavailable">Niedostępne dla tego utworu (%1$s)</string>
+    <string name="legacy_player">Odtwarzacz 1.8</string>
+    <string name="legacy_player_subtitle">Klasyczny uklad odtwarzacza BitChord 1.8</string>
 </resources>

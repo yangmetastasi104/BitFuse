@@ -56,7 +56,17 @@ object DownloadStore {
     private const val TAG = "BitChord"
 
     /** The subfolder of Music that everything lands in. */
-    const val FOLDER = "BitChord"
+    const val FOLDER = "BitFuse"
+
+    /**
+     * The folder builds before this one saved to. Downloads made under the old
+     * name are still the listener's: they stay in the library and in the
+     * duplicate check, and only new files are written under [FOLDER].
+     */
+    const val LEGACY_FOLDER = "BitChord"
+
+    /** Every folder downloads may live in, newest first. */
+    val FOLDERS = listOf(FOLDER, LEGACY_FOLDER)
 
     private val relativePath = "${Environment.DIRECTORY_MUSIC}/$FOLDER"
 
@@ -160,6 +170,7 @@ object DownloadStore {
             mediaStoreEntry(context, name)
         } else {
             legacyFile(name).takeIf { it.exists() }?.let(Uri::fromFile)
+                ?: legacyLocation(LEGACY_FOLDER, name).takeIf { it.exists() }?.let(Uri::fromFile)
         }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -167,9 +178,9 @@ object DownloadStore {
         context.contentResolver.query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
             arrayOf(MediaStore.MediaColumns._ID),
-            "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND " +
-                "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?",
-            arrayOf(name, "%$FOLDER%"),
+            "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND (" +
+                FOLDERS.joinToString(" OR ") { "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ?" } + ")",
+            FOLDERS.map { "%$it%" }.toTypedArray().let { arrayOf(name) + it },
             null,
         )?.use { cursor ->
             if (!cursor.moveToFirst()) return@use null
@@ -309,10 +320,12 @@ object DownloadStore {
     }
 
     @Suppress("DEPRECATION")
-    private fun legacyFile(name: String) = File(
-        File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), FOLDER),
+    private fun legacyLocation(folder: String, name: String) = File(
+        File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), folder),
         name,
     )
+
+    private fun legacyFile(name: String) = legacyLocation(FOLDER, name)
 
     private fun privateFile(context: Context, name: String) =
         File(File(context.filesDir, "downloads"), name)

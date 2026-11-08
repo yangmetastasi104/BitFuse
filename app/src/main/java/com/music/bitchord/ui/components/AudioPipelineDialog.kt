@@ -30,6 +30,8 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,8 +70,10 @@ import com.music.bitchord.playback.AudioOutputStatus
 import com.music.bitchord.playback.audio.bitperfect.BitPerfectOutput
 import com.music.bitchord.playback.dsd.DsdFilter
 import com.music.bitchord.playback.dsd.DsdFormat
+import com.music.bitchord.playback.sing.SingControl
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.isActive
+import androidx.compose.runtime.collectAsState
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
@@ -136,7 +140,7 @@ private fun bitExactVerdict(
  * Displays live, authoritative details for each stage in the audio pipeline:
  * Track Info -> Decoder -> Resampler -> DSP -> Output Device.
  *
- * Same frosted card shape as [LyricsSourcesDialog] and [UpdateAvailableDialog] —
+ * Same frosted card shape as [LyricsSourcesDialog] —
  * header with a title and subtitle, hairline-separated groups, a full-width
  * closing action — fixed to this player's own dark palette rather than the
  * theme-adaptive one those settings dialogs use, since everything else on this
@@ -157,6 +161,9 @@ fun AudioPipelineDialog(
     val eqPreset by AppSettings.equalizerPreset.collectAsStateWithLifecycle()
     val spatialAudio by AppSettings.spatialAudio.collectAsStateWithLifecycle()
     val loudnessNormalization by AppSettings.loudnessNormalization.collectAsStateWithLifecycle()
+    val singEnabled by SingControl.enabled.collectAsState()
+    val singLevel by SingControl.vocalLevel.collectAsState()
+    val singStatus by SingControl.status.collectAsState()
 
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -239,11 +246,41 @@ fun AudioPipelineDialog(
                     drawSignalFlow(stageCenters, flowAlpha, pulseProgress, interactionRadiusPx)
                 },
         )
-        Column(
+            Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .onGloballyPositioned { columnCoordinates = it },
         ) {
+            Text(
+                "Sing · MDX-Net MNN",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+            Text(
+                singStatus,
+                color = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier.weight(1f),
+            )
+                Switch(checked = singEnabled, onCheckedChange = SingControl::setEnabled)
+            }
+            Text(
+                "Voce: ${(singLevel * 100).toInt()}%",
+                color = Color.White.copy(alpha = 0.72f),
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+            Slider(
+                value = singLevel,
+                onValueChange = SingControl::setVocalLevel,
+                valueRange = 0f..1f,
+                enabled = singEnabled,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+
             // 1. Track Info Stage
             val sourceName = nerdStats?.sourceName ?: "—"
             // DSD is the one source whose own rate is not the rate the

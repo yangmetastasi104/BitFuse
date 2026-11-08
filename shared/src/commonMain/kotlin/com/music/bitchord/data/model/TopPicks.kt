@@ -21,6 +21,9 @@ data class WatchTarget(
  */
 @Serializable
 enum class TopPickKind {
+    /** Spotify's saved tracks playlist, shown when a Spotify account is linked. */
+    SPOTIFY_LIKED,
+
     /** The newest single or album from one of the listener's top artists. Opens the release. */
     LATEST_RELEASE,
 

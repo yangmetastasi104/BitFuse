@@ -406,11 +406,11 @@ private fun drawHeader(
     val brand = type.heading(46f, 0xE6FFFFFF.toInt()).apply {
         textAlign = Paint.Align.RIGHT
     }
-    canvas.drawText("BitChord", POSTER_W - MARGIN, 132f, brand)
+    canvas.drawText("BitFuse", POSTER_W - MARGIN, 132f, brand)
     // The mark, to the left of the word, exactly as the story header and the
     // card carry it. Without it the one artefact of this app that ends up in
     // somebody else's chat was the only place the logo didn't appear.
-    val wordWidth = brand.measureText("BitChord")
+    val wordWidth = brand.measureText("BitFuse")
     drawLogo(canvas, context, POSTER_W - MARGIN - wordWidth - LOGO_GAP, 132f)
 
     val credit = listOfNotNull(
@@ -608,9 +608,10 @@ internal fun drawArtwork(
     y: Float,
     size: Float,
     circular: Boolean,
+    radiusRatio: Float? = null,
 ) {
     val bounds = RectF(x, y, x + size, y + size)
-    val radius = if (circular) size / 2f else size * 0.10f
+    val radius = if (circular) size / 2f else size * (radiusRatio ?: 0.10f)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     if (bitmap != null) {
         val scale = size / minOf(bitmap.width, bitmap.height).toFloat()
@@ -732,10 +733,11 @@ internal class Fonts(context: Context) {
     private val semibold = font(context, R.font.sf_pro_display_semibold) ?: Typeface.DEFAULT_BOLD
     private val regular = font(context, R.font.sf_pro_display_regular) ?: Typeface.DEFAULT
 
-    fun heading(size: Float, color: Int) = paint(heavy, size, color)
+    fun heading(size: Float, color: Int, family: com.music.bitchord.ui.player.LyricsCardFont? = null) =
+        paint(face(family, heavy), size, color)
 
-    fun body(size: Float, color: Int, bold: Boolean = false) =
-        paint(if (bold) semibold else regular, size, color)
+    fun body(size: Float, color: Int, bold: Boolean = false, font: com.music.bitchord.ui.player.LyricsCardFont? = null) =
+        paint(face(font, if (bold) semibold else regular), size, color)
 
     fun label(size: Float, color: Int, tracking: Float = 0.10f) =
         paint(semibold, size, color).apply { letterSpacing = tracking }
@@ -749,6 +751,14 @@ internal class Fonts(context: Context) {
 
     private fun font(context: Context, id: Int): Typeface? =
         runCatching { ResourcesCompat.getFont(context, id) }.getOrNull()
+
+    private fun face(family: com.music.bitchord.ui.player.LyricsCardFont?, fallback: Typeface): Typeface = when (family) {
+        com.music.bitchord.ui.player.LyricsCardFont.SANS -> Typeface.create("sans-serif", Typeface.NORMAL)
+        com.music.bitchord.ui.player.LyricsCardFont.SERIF -> Typeface.create("serif", Typeface.NORMAL)
+        com.music.bitchord.ui.player.LyricsCardFont.MONOSPACE -> Typeface.create("monospace", Typeface.NORMAL)
+        com.music.bitchord.ui.player.LyricsCardFont.ROUNDED -> Typeface.create("sans-serif-rounded", Typeface.NORMAL)
+        null, com.music.bitchord.ui.player.LyricsCardFont.BITFUSE -> fallback
+    }
 }
 
 internal suspend fun loadBitmap(context: Context, url: String): Bitmap? = runCatching {

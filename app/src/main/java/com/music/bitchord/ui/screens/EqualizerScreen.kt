@@ -31,6 +31,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import com.music.bitchord.ui.components.IosSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,10 +65,16 @@ import com.music.bitchord.data.settings.EqualizerMode
 import com.music.bitchord.playback.AudioOutputStatus
 import com.music.bitchord.playback.EqLayout
 import com.music.bitchord.playback.EqualizerPreset
+import com.music.bitchord.playback.ParametricBand
+import com.music.bitchord.playback.ParametricLayout
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
+import android.content.Intent
+import android.media.audiofx.AudioEffect
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.ln
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 /**
@@ -79,7 +89,11 @@ import kotlin.math.roundToInt
  *
  * **Manual** is the seven-band graphic equaliser, with a preset list over it.
  *
- * Both drive the same filters — see [EqLayout] — so the tab is a way of
+ * **Parametric** is the same idea with the filters unbolted: a bank of ten or
+ * nineteen bells, each with its own centre, width (Q) and gain. The other two
+ * tabs choose the frequencies for you; this one hands them over.
+ *
+ * All three drive the same filters — see [EqLayout] — so the tab is a way of
  * describing a curve rather than a different piece of audio machinery, and
  * switching between them glides rather than clicks.
  */
@@ -101,9 +115,12 @@ fun EqualizerScreen(
     val balance by AppSettings.equalizerBalance.collectAsStateWithLifecycle()
     val bands by AppSettings.equalizerBands.collectAsStateWithLifecycle()
     val preset by AppSettings.equalizerPreset.collectAsStateWithLifecycle()
+    val parametricCount by AppSettings.equalizerParametricBands.collectAsStateWithLifecycle()
+    val parametric by AppSettings.equalizerParametric.collectAsStateWithLifecycle()
     val outputStatus by AudioOutputStatus.current.collectAsStateWithLifecycle()
 
     val haptics = rememberHaptics()
+    var editingBand by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = modifier
@@ -218,6 +235,50 @@ fun EqualizerScreen(
                         }
                     }
                 }
+
+                EqualizerMode.PARAMETRIC -> {
+                    SettingsGroup(
+                        header = stringResource(R.string.equalizer_parametric_count),
+                        footer = stringResource(R.string.equalizer_parametric_count_footer),
+                    ) {
+                        ChoiceRow(
+                            label = stringResource(R.string.equalizer_bands_10),
+                            selected = parametricCount == ParametricLayout.SMALL_BANDS,
+                            onClick = { AppSettings.setEqualizerParametricBandCount(ParametricLayout.SMALL_BANDS) },
+                            enabled = enabled,
+                        )
+                        RowDivider()
+                        ChoiceRow(
+                            label = stringResource(R.string.equalizer_bands_19),
+                            selected = parametricCount == ParametricLayout.MAX_BANDS,
+                            onClick = { AppSettings.setEqualizerParametricBandCount(ParametricLayout.MAX_BANDS) },
+                            enabled = enabled,
+                        )
+                    }
+                    SettingsGroup(
+                        header = stringResource(R.string.equalizer_parametric_bands),
+                        footer = stringResource(R.string.equalizer_parametric_footer),
+                    ) {
+                        parametric.forEachIndexed { index, band ->
+                            if (index > 0) RowDivider()
+                            ParametricBandRow(
+                                index = index,
+                                band = band,
+                                enabled = enabled,
+                                onChange = { AppSettings.setEqualizerParametricBand(index, it) },
+                                onEdit = { editingBand = index },
+                            )
+                        }
+                        RowDivider()
+                        DestructiveRow(
+                            label = stringResource(R.string.equalizer_reset),
+                            enabled = enabled,
+                        ) {
+                            haptics.play(Haptic.Select)
+                            AppSettings.resetEqualizerParametric()
+                        }
+                    }
+                }
             }
 
             SettingsGroup(
@@ -268,6 +329,23 @@ fun EqualizerScreen(
         }
 
         Spacer(Modifier.height(32.dp))
+    }
+
+    // Only ever opened from a row that exists, and the bank can change under it
+    // (a band count chosen by another hand, a settings restore), so the sheet
+    // re-reads its band every composition instead of capturing one.
+    val editing = editingBand
+    if (editing != null && editing < parametric.size) {
+        ModalBottomSheet(
+            onDismissRequest = { editingBand = null },
+            containerColor = MaterialTheme.colorScheme.background,
+        ) {
+            ParametricBandSheet(
+                index = editing,
+                band = parametric[editing],
+                onChange = { AppSettings.setEqualizerParametricBand(editing, it) },
+            )
+        }
     }
 }
 
@@ -684,6 +762,186 @@ private fun formatFrequency(hz: Float): String = when {
     else -> String.format(Locale.getDefault(), "%.1fk", hz / 1_000f)
 }
 
+// ---- Parametric bank -------------------------------------------------------
+
+/**
+ * One band of the parametric bank: where it sits, how much it lifts or cuts,
+ * and the gain's slider underneath.
+ *
+ * Gain gets the permanent control because it is what a band is for. Centre and
+ * width live in [ParametricBandSheet]: they are chosen once and then left
+ * alone, and nineteen rows carrying three live sliders each would be a wall of
+ * tracks where a list of bands belongs.
+ */
+@Composable
+private fun ParametricBandRow(
+    index: Int,
+    band: ParametricBand,
+    enabled: Boolean,
+    onChange: (ParametricBand) -> Unit,
+    onEdit: () -> Unit,
+) {
+    val haptics = rememberHaptics()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = ROW_INSET, vertical = 10.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled) {
+                    haptics.play(Haptic.Select)
+                    onEdit()
+                }
+                .padding(bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.equalizer_band, index + 1),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = stringResource(
+                    R.string.equalizer_band_shape,
+                    formatFrequency(band.frequencyHz),
+                    formatQ(band.q),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = formatGain(band.gainDb),
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (abs(band.gainDb) < 0.05f) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+            )
+        }
+        Slider(
+            value = band.gainDb,
+            onValueChange = { onChange(band.withGain(snapGain(it, ParametricLayout.RANGE_DB))) },
+            valueRange = -ParametricLayout.RANGE_DB..ParametricLayout.RANGE_DB,
+            // Twenty-four decibels of travel in half-decibel steps.
+            steps = 47,
+            enabled = enabled,
+        )
+    }
+}
+
+/**
+ * The band's two remaining numbers, on sliders that move by ear rather than by
+ * hertz: frequency is log-spaced from 20 Hz to 20 kHz, and Q likewise from
+ * 0.2 to 12, so the whole useful range of each is one thumb travel.
+ */
+@Composable
+private fun ParametricBandSheet(
+    index: Int,
+    band: ParametricBand,
+    onChange: (ParametricBand) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+        Text(
+            text = stringResource(R.string.equalizer_band, index + 1),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(start = 22.dp, end = 22.dp, bottom = 14.dp),
+        )
+        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline)
+        Column(Modifier.padding(horizontal = 22.dp, vertical = 10.dp)) {
+            SliderLabel(
+                label = stringResource(R.string.equalizer_band_frequency),
+                value = formatFrequency(band.frequencyHz) + " Hz",
+            )
+            Slider(
+                value = frequencyPosition(band.frequencyHz),
+                onValueChange = { onChange(band.withFrequency(snapFrequency(frequencyAt(it)))) },
+                valueRange = 0f..1f,
+            )
+            SliderLabel(
+                label = stringResource(R.string.equalizer_band_q),
+                value = formatQ(band.q),
+            )
+            Slider(
+                value = qPosition(band.q),
+                onValueChange = { onChange(band.withQ(snapQ(qAt(it)))) },
+                valueRange = 0f..1f,
+            )
+            Text(
+                text = stringResource(R.string.equalizer_band_footer),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp, bottom = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SliderLabel(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+/** 0 at 20 Hz and 1 at 20 kHz, so the thumb moves evenly by ear. */
+private fun frequencyPosition(hz: Float): Float {
+    val clamped = hz.coerceIn(ParametricLayout.MIN_HZ, ParametricLayout.MAX_HZ)
+    return (ln(clamped / ParametricLayout.MIN_HZ) / ln(ParametricLayout.MAX_HZ / ParametricLayout.MIN_HZ))
+        .coerceIn(0f, 1f)
+}
+
+private fun frequencyAt(position: Float): Float =
+    ParametricLayout.MIN_HZ *
+        (ParametricLayout.MAX_HZ / ParametricLayout.MIN_HZ).pow(position.coerceIn(0f, 1f))
+
+/**
+ * Rounds to something a person would say: whole hertz below 100, then 5 Hz,
+ * 50 Hz and 100 Hz steps. A centre reported as "3473 Hz" reads as noise.
+ */
+private fun snapFrequency(hz: Float): Float = when {
+    hz < 100f -> hz.roundToInt().toFloat()
+    hz < 1_000f -> (hz / 5f).roundToInt() * 5f
+    hz < 10_000f -> (hz / 50f).roundToInt() * 50f
+    else -> (hz / 100f).roundToInt() * 100f
+}.coerceIn(ParametricLayout.MIN_HZ, ParametricLayout.MAX_HZ)
+
+private fun qPosition(q: Float): Float {
+    val clamped = q.coerceIn(ParametricLayout.MIN_Q, ParametricLayout.MAX_Q)
+    return (ln(clamped / ParametricLayout.MIN_Q) / ln(ParametricLayout.MAX_Q / ParametricLayout.MIN_Q))
+        .coerceIn(0f, 1f)
+}
+
+private fun qAt(position: Float): Float =
+    ParametricLayout.MIN_Q *
+        (ParametricLayout.MAX_Q / ParametricLayout.MIN_Q).pow(position.coerceIn(0f, 1f))
+
+/** Two decimals is how Q is printed everywhere else in audio. */
+private fun snapQ(q: Float): Float =
+    ((q * 100f).roundToInt() / 100f).coerceIn(ParametricLayout.MIN_Q, ParametricLayout.MAX_Q)
+
+private fun formatQ(value: Float): String = String.format(Locale.getDefault(), "%.2f", value)
+
 // ---- Balance ---------------------------------------------------------------
 
 /**
@@ -836,6 +1094,7 @@ private fun EqualizerMode.localizedLabel(): String = stringResource(
     when (this) {
         EqualizerMode.DYNAMIC -> R.string.equalizer_dynamic
         EqualizerMode.MANUAL -> R.string.equalizer_manual
+        EqualizerMode.PARAMETRIC -> R.string.equalizer_parametric
     },
 )
 

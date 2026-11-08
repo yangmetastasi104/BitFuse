@@ -138,16 +138,25 @@ enum class SourceKind(
     ),
 
     /**
-     * The source the app was built on, listed here so it always has a fixed
-     * place: second, behind the module source. It cannot be removed — see
-     * [SourceRegistry]. Nothing else in the app can supply a home feed, a
-     * radio station or a related-tracks queue.
+     * The YouTube Music catalog: search, browse and library metadata.
+     *
+     * Catalog-only in this build — see [YouTubeSource]. It cannot serve
+     * audio, so [activeForPlayback][SourceRegistry.activeForPlayback] and
+     * [activeForDownload][SourceRegistry.activeForDownload] always exclude
+     * it, and the ceiling in [permits][com.music.bitchord.data.settings.AudioQuality.permits]
+     * never applies to it. Its toggle on the Sources screen controls catalog
+     * participation, not playback.
+     *
+     * The one exception sits outside this list rather than inside it: a music
+     * video that no enabled provider has is resolved by YouTube Music itself
+     * as a last resort — see
+     * [YtMusicVideoFallback][com.music.bitchord.data.sources.YtMusicVideoFallback].
      */
     YOUTUBE(
         label = "YouTube Music",
-        detail = "The full catalogue, at Opus up to about 171 kbps. Lossy — there is no " +
-            "lossless rendition to ask for.",
-        labels = listOf("Lossy", "Full catalogue", "Radio"),
+        detail = "Catalog metadata: search, home, and library. Audio comes from your add-on " +
+            "sources; a music video none of them has falls back to YouTube Music.",
+        labels = listOf("Catalog", "Metadata"),
         needsServer = false,
         canServeLossless = false,
         rank = 3,

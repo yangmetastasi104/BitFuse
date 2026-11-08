@@ -1,0 +1,14 @@
+name = "bitfuse-addon-catalog"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bitfuse-addon-catalog"
+database_id = "3b68a024-2999-401e-a5dc-31c4f81e3516"
+migrations_dir = "migrations"
+
+[[ratelimits]]
+name = "AUTH_LIMITER"
+namespace_id = "1001"
+simple = { limit = 8, period = 60 }

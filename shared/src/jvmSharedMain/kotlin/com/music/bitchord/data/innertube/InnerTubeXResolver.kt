@@ -230,6 +230,7 @@ object InnerTubeXResolver {
         requireM4a: Boolean = false,
         uploaded: Boolean = false,
     ): Extracted? {
+        if (YtmNetwork.isPlaybackDisabled()) return null
         innerTube.cookie = Innertube.cookie
         innerTube.visitorData = Innertube.ensureVisitorData()
         innerTube.locale = YouTubeLocale(gl = Innertube.currentRegion, hl = Innertube.currentLanguage)

@@ -43,6 +43,8 @@ fun AccountAndScrobblingScreen(
     onSignIn: () -> Unit,
     onSwitchChannel: () -> Unit,
     onSignOut: () -> Unit,
+    soundCloudConnected: Boolean = false,
+    onOpenSoundCloudLogin: () -> Unit = {},
     onOpenListenBrainzLogin: () -> Unit,
     onOpenLastfmLogin: () -> Unit,
     onOpenDiscord: () -> Unit,
@@ -65,7 +67,7 @@ fun AccountAndScrobblingScreen(
     val discordToken by AppSettings.discordToken.collectAsStateWithLifecycle()
     val discordUsername by AppSettings.discordUsername.collectAsStateWithLifecycle()
     val discordRpcEnabled by AppSettings.discordRpcEnabled.collectAsStateWithLifecycle()
-    val spotifyConnected by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
+    val spotifyConnected by AppSettings.spotifyConnected.collectAsStateWithLifecycle()
 
     Column(
         modifier = modifier
@@ -99,6 +101,13 @@ fun AccountAndScrobblingScreen(
                 FullWidthDivider()
                 DestructiveRow(label = stringResource(R.string.sign_out), onClick = onSignOut)
             }
+            FullWidthDivider()
+            SettingsRow(
+                icon = SfIcons.Cloud,
+                title = "SoundCloud",
+                subtitle = if (soundCloudConnected) "Connected" else "Sign in to SoundCloud",
+                onClick = onOpenSoundCloudLogin,
+            )
         }
 
         SettingsGroup(
@@ -109,17 +118,16 @@ fun AccountAndScrobblingScreen(
                 iconPainter = painterResource(Res.drawable.spotify_logo),
                 title = stringResource(R.string.spotify),
                 subtitle = stringResource(
-                    if (spotifyConnected.isNotBlank()) R.string.connected else R.string.tap_to_connect,
+                    if (spotifyConnected) R.string.connected else R.string.tap_to_connect,
                 ),
                 onClick = onOpenSpotify,
             )
-            if (spotifyConnected.isNotBlank()) {
+            if (spotifyConnected) {
                 FullWidthDivider()
                 DestructiveRow(
                     label = stringResource(R.string.spotify_disconnect),
                     onClick = {
-                        clearSpotifyWebSession()
-                        AppSettings.setSpotifySpdcToken("")
+                        com.music.bitchord.data.spotify.SpotifySession.signOut()
                     },
                 )
             }

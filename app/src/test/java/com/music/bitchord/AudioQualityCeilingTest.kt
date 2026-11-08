@@ -5,7 +5,6 @@ import com.music.bitchord.data.settings.AudioQuality
 import com.music.bitchord.data.settings.permits
 import com.music.bitchord.data.sources.SourceKind
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -16,25 +15,25 @@ import org.junit.Test
  */
 class AudioQualityCeilingTest {
 
-    private val lossless = SourceKind.entries.filter { it.canServeLossless }
-
     @Test
-    fun `lossless asks every source`() {
-        SourceKind.entries.forEach { assertTrue(it.name, AudioQuality.LOSSLESS.permits(it)) }
+    fun `lossless allows audio providers but never YouTube Music playback`() {
+        SourceKind.entries.forEach {
+            assertEquals(it.name, it != SourceKind.YOUTUBE, AudioQuality.LOSSLESS.permits(it))
+        }
     }
 
     @Test
-    fun `high skips every source that can serve lossless and keeps JioSaavn`() {
-        lossless.forEach { assertFalse(it.name, AudioQuality.HIGH.permits(it)) }
-        assertTrue(AudioQuality.HIGH.permits(SourceKind.JIOSAAVN))
-        assertTrue(AudioQuality.HIGH.permits(SourceKind.YOUTUBE))
+    fun `high keeps add-ons available and YouTube Music playback disabled`() {
+        SourceKind.entries.forEach {
+            assertEquals(it.name, it != SourceKind.YOUTUBE, AudioQuality.HIGH.permits(it))
+        }
     }
 
     @Test
-    fun `medium and low leave YouTube alone`() {
+    fun `every quality rung keeps add-ons and JioSaavn available but excludes YouTube`() {
         for (ceiling in listOf(AudioQuality.MEDIUM, AudioQuality.LOW)) {
             SourceKind.entries.forEach { kind ->
-                assertEquals("$ceiling/$kind", kind == SourceKind.YOUTUBE, ceiling.permits(kind))
+                assertEquals("$ceiling/$kind", kind != SourceKind.YOUTUBE, ceiling.permits(kind))
             }
         }
     }

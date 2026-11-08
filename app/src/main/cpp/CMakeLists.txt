@@ -83,7 +83,10 @@ target_link_options(bitchord_dst PRIVATE "-Wl,-z,max-page-size=16384")
 include(FetchContent)
 set(OBOE_DISABLE_CONVERSION ON CACHE BOOL "" FORCE)
 FetchContent_Declare(oboe
-    URL https://github.com/google/oboe/archive/refs/tags/1.11.0.tar.gz
+    URL https://codeload.github.com/google/oboe/tar.gz/refs/tags/1.11.0
+    DOWNLOAD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../build/native-downloads"
+    DOWNLOAD_NAME oboe-1.11.0.tar.gz
+    TIMEOUT 600
     URL_HASH SHA256=0ccf2110640a2b4489f1c93a404f2978656b434d8c5dc9cb6258f9cc95c79b15)
 FetchContent_MakeAvailable(oboe)
 
@@ -106,6 +109,8 @@ set_property(TARGET bitchord_exclusive APPEND PROPERTY LINK_DEPENDS
 # adapted from Mornye's Rust driver (LGPL-3.0).
 FetchContent_Declare(libusb
     URL https://github.com/libusb/libusb/releases/download/v1.0.27/libusb-1.0.27.tar.bz2
+    DOWNLOAD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../build/native-downloads"
+    TIMEOUT 600
     URL_HASH SHA256=ffaa41d741a8a3bee244ac8e54a72ea05bf2879663c098c82fc5757853441575)
 FetchContent_MakeAvailable(libusb)
 add_library(bitchord_libusb STATIC
@@ -134,3 +139,31 @@ target_link_options(bitchord_usb PRIVATE
     "-Wl,--version-script,${CMAKE_CURRENT_SOURCE_DIR}/bitperfect/exports.map")
 set_property(TARGET bitchord_usb APPEND PROPERTY LINK_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/bitperfect/exports.map")
+
+# Offline MDX-Net vocal separation. MNN is built as a shared runtime so the
+# model stays external to the app code and can be replaced without recompiling.
+set(KISSFFT_DATATYPE "float" CACHE STRING "" FORCE)
+set(KISSFFT_STATIC ON CACHE BOOL "" FORCE)
+set(KISSFFT_TEST OFF CACHE BOOL "" FORCE)
+set(KISSFFT_TOOLS OFF CACHE BOOL "" FORCE)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/sing/kissfft ${CMAKE_CURRENT_BINARY_DIR}/sing-kissfft EXCLUDE_FROM_ALL)
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${CMAKE_ANDROID_ARCH_ABI}/libMNN.so")
+add_library(bitchord_sing SHARED
+    sing/jni_bridge.cpp
+    sing/stft_engine.cpp
+    sing/sinc_resampler.cpp
+    sing/vr_dsp_engine.cpp
+    sing/mnn_bridge.cpp
+)
+target_include_directories(bitchord_sing PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/sing
+    ${CMAKE_CURRENT_SOURCE_DIR}/sing/mnn/include
+)
+target_compile_options(bitchord_sing PRIVATE -O3 -ffast-math -funroll-loops -fvisibility=hidden)
+add_library(MNN SHARED IMPORTED)
+target_link_libraries(bitchord_sing PRIVATE kissfft MNN ${log-lib} dl)
+set_target_properties(MNN PROPERTIES IMPORTED_LOCATION
+    ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${CMAKE_ANDROID_ARCH_ABI}/libMNN.so)
+target_link_options(bitchord_sing PRIVATE "-Wl,-z,max-page-size=16384")
+endif()

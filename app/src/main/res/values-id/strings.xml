@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BitChord</string>
+    <string name="app_name">BitFuse</string>
     <string name="playback_channel_name">Sedang diputar</string>
     <string name="download_channel_name">Unduhan</string>
     <string name="download_channel_description">Lagu yang sedang disimpan ke folder Musik Anda</string>
@@ -99,10 +99,10 @@
     <string name="dolby_atmos_open_failed">Tidak dapat membuka pengaturan Dolby Atmos</string>
     <string name="update_available">Pembaruan tersedia: v%1$s</string>
     <string name="software_update">Pembaruan Perangkat Lunak</string>
-    <string name="update_available_body">bitchord %1$s tersedia untuk diunduh.</string>
-    <string name="update_downloading_body">Mengunduh bitchord %1$s…</string>
-    <string name="update_ready_body">bitchord %1$s siap dipasang.</string>
-    <string name="update_failed_body">Gagal mengunduh bitchord %1$s.</string>
+    <string name="update_available_body">BitFuse %1$s tersedia untuk diunduh.</string>
+    <string name="update_downloading_body">Mengunduh BitFuse %1$s…</string>
+    <string name="update_ready_body">BitFuse %1$s siap dipasang.</string>
+    <string name="update_failed_body">Gagal mengunduh BitFuse %1$s.</string>
     <string name="download_now">Unduh Sekarang</string>
     <string name="install_now">Pasang Sekarang</string>
     <string name="later">Nanti</string>
@@ -130,7 +130,7 @@
     <string name="widget_previous">Sebelumnya</string>
     <string name="widget_artwork">Sampul album</string>
     <string name="widget_nothing_played">Belum ada yang diputar</string>
-    <string name="widget_open_bitchord">Buka BitChord</string>
+    <string name="widget_open_bitchord">Buka BitFuse</string>
     <string name="widget_preview_title">Judul lagu</string>
     <string name="widget_preview_artist">Artis</string>
     <string name="widget_pill_label">Sedang diputar 4×1</string>
@@ -157,7 +157,7 @@
     <string name="cancel_all">Batalkan semua</string>
     <string name="language">Bahasa</string>
     <string name="app_language">Bahasa aplikasi</string>
-    <string name="app_language_description">Pilih bahasa yang digunakan BitChord.</string>
+    <string name="app_language_description">Pilih bahasa yang digunakan BitFuse.</string>
     <string name="english">Inggris</string>
     <string name="spanish">Spanyol</string>
     <string name="french">Prancis</string>
@@ -207,8 +207,6 @@
     <string name="reduce_animation_subtitle">Membekukan gradien pemutar utama alih-alih bergerak</string>
     <string name="reduce_dynamic_blur">Kurangi blur dinamis</string>
     <string name="reduce_dynamic_blur_subtitle">Mengganti kaca buram dengan warna solid di seluruh aplikasi</string>
-    <string name="disable_blend_effects">Nonaktifkan efek campuran</string>
-    <string name="disable_blend_effects_subtitle">Menampilkan ikon, teks, dan menu gelap pemutar dalam warna putih polos, tanpa diwarnai sampul</string>
     <string name="full_screen_cover_art">Sampul layar penuh</string>
     <string name="animated_cover_art">Sampul animasi</string>
     <string name="synced_lyrics">Lirik tersinkron</string>
@@ -239,8 +237,6 @@
     <string name="light">Terang</string>
     <string name="dark">Gelap</string>
     <string name="full_screen_cover_art_subtitle">Membuat sampul memenuhi tepi pemutar alih-alih berbentuk persegi</string>
-    <string name="full_screen_detail_cover">Sampul album/playlist layar penuh</string>
-    <string name="full_screen_detail_cover_subtitle">Membuat sampul album dan playlist memenuhi tepi halaman alih-alih berbingkai</string>
     <string name="animated_cover_art_subtitle">Memutar video berulang yang disertakan beberapa rilisan alih-alih sampul diam</string>
     <string name="dont_repeat_songs_subtitle">Putar Otomatis tidak akan menyarankan lagu yang sudah diputar atau disarankan dalam sesi ini</string>
     <string name="download_quality_subtitle">%1$s per trek, apa pun koneksinya</string>
@@ -253,10 +249,10 @@
     <string name="beta">Beta</string>
     <string name="refresh_rate">Refresh rate</string>
     <string name="high_performance_before_enabling">Sebelum mengaktifkan</string>
-    <string name="high_performance_battery_warning">Atur dulu penggunaan baterai BitChord ke Tidak Dibatasi. Refresh rate yang lebih tinggi menggunakan lebih banyak baterai, CPU, dan GPU, serta dapat membuat perangkat Anda menjadi hangat.</string>
+    <string name="high_performance_battery_warning">Atur dulu penggunaan baterai BitFuse ke Tidak Dibatasi. Refresh rate yang lebih tinggi menggunakan lebih banyak baterai, CPU, dan GPU, serta dapat membuat perangkat Anda menjadi hangat.</string>
     <string name="open_battery_settings">Buka pengaturan baterai</string>
     <string name="enable_high_performance_title">Aktifkan mode performa tinggi?</string>
-    <string name="enable_high_performance_confirmation">Aktifkan hanya jika penggunaan baterai BitChord diatur ke Tidak Dibatasi. Android tetap dapat membatasi refresh rate saat perangkat panas atau baterai lemah.</string>
+    <string name="enable_high_performance_confirmation">Aktifkan hanya jika penggunaan baterai BitFuse diatur ke Tidak Dibatasi. Android tetap dapat membatasi refresh rate saat perangkat panas atau baterai lemah.</string>
     <string name="enable">Aktifkan</string>
     <string name="not_yet">Belum</string>
     <string name="activity">Aktivitas</string>
@@ -291,7 +287,7 @@
     <string name="discord_presence_footer">Kartu diperbarui saat trek, posisi, atau status pemutaran berubah. Kartu akan hilang saat pemutaran berhenti.</string>
     <string name="discord_show_audio_quality">Tampilkan kualitas audio</string>
     <string name="discord_show_audio_quality_subtitle">Spesifikasi Hi-Res, lossless, dan Dolby di kartu status</string>
-    <string name="discord_sign_in_footer">Masuk akan membuka halaman login Discord. Tidak ada yang diketik ke BitChord.</string>
+    <string name="discord_sign_in_footer">Masuk akan membuka halaman login Discord. Tidak ada yang diketik ke BitFuse.</string>
     <string name="discord_token">Token Discord</string>
     <string name="discord_token_description">Tempel token akun Discord Anda. Token ini tetap terenkripsi di perangkat ini dan hanya dikirim ke Discord.</string>
     <string name="discord_token_rejected">Discord menolak token tersebut.</string>
@@ -326,7 +322,7 @@
     <string name="downloads_finished">Unduhan · selesai</string>
     <string name="downloading_progress">Mengunduh · %1$d%%</string>
     <string name="starting">Memulai</string>
-    <string name="saved_to_bitchord_folder">Disimpan ke Music/BitChord</string>
+    <string name="saved_to_bitchord_folder">Disimpan ke Music/BitFuse</string>
     <string name="nothing_downloading">Tidak ada yang sedang diunduh</string>
     <string name="nothing_to_explore">Belum ada yang bisa dijelajahi saat ini</string>
     <string name="no_youtube_music_results">Tidak ada hasil dari YouTube Music</string>
@@ -445,7 +441,7 @@
     <string name="sleep_timer_custom">Kustom</string>
     <string name="start_sleep_timer">Mulai timer</string>
     <string name="sources_no_lossless">Tidak ada sumber aktif yang dapat menyediakan audio lossless. Tambahkan modul kustom untuk memutar file lossless yang tersedia tanpa transcoding.</string>
-    <string name="sources_order_footer">Jika suatu sumber tidak memiliki trek atau tidak dapat dijangkau, BitChord mencoba sumber berikutnya. Sumber di atas YouTube dapat menggantikan rekamannya saat menghasilkan versi yang lebih baik.</string>
+    <string name="sources_order_footer">Jika suatu sumber tidak memiliki trek atau tidak dapat dijangkau, BitFuse mencoba sumber berikutnya. Sumber di atas YouTube dapat menggantikan rekamannya saat menghasilkan versi yang lebih baik.</string>
     <string name="sources_order_header">Sumber, dicoba dalam urutan ini</string>
     <string name="sources_quality_capped">Koneksi ini diatur di bawah Kualitas tinggi, sehingga stream ditranskode agar sesuai dengan batas tersebut. Unduhan tidak terpengaruh.</string>
     <string name="jiosaavn_mismatch_warning">Bisa mencocokkan versi lagu yang salah. Aktifkan dengan risiko sendiri.</string>
@@ -490,7 +486,7 @@
     <string name="biggest_day_note">Hari terbesar Anda adalah %1$s dengan %2$s waktu mendengarkan.</string>
     <string name="close_replay">Tutup Replay</string>
     <string name="couldnt_draw_picture">Tidak dapat membuat gambar</string>
-    <string name="default_replay_holder">Pendengar BitChord</string>
+    <string name="default_replay_holder">Pendengar BitFuse</string>
     <string name="different_albums">Album yang berbeda</string>
     <string name="genres_pending">Genre akan muncul seiring bertambahnya riwayat mendengarkan Anda</string>
     <string name="hour_am">%1$d AM</string>
@@ -520,7 +516,7 @@
     <string name="replay_artist_end"> terus Anda dengarkan.</string>
     <string name="replay_artist_focus">Satu artis</string>
     <string name="replay_artist_start">Sepanjang bulan ini, </string>
-    <string name="replay_empty_description">Dengarkan sedikit lebih banyak dan BitChord akan mengubah riwayat Anda menjadi Replay.</string>
+    <string name="replay_empty_description">Dengarkan sedikit lebih banyak dan BitFuse akan mengubah riwayat Anda menjadi Replay.</string>
     <string name="replay_genre_end"> membentuk selera musik Anda.</string>
     <string name="replay_genre_focus">Genre Anda</string>
     <string name="replay_genre_start">Bersama-sama, </string>
@@ -581,7 +577,7 @@
     <string name="webdav_subtitle">Musik di server kamu</string>
     <string name="webdav_not_configured">Hubungkan server di Sumber</string>
     <string name="webdav_empty">Tidak ada file audio di server WebDAV. Periksa URL di Setelan.</string>
-    <string name="webdav_description">Arahkan BitChord ke folder musik WebDAV — direktori Musik Nextcloud kamu atau server apa pun yang mendukung WebDAV.</string>
+    <string name="webdav_description">Arahkan BitFuse ke folder musik WebDAV — direktori Musik Nextcloud kamu atau server apa pun yang mendukung WebDAV.</string>
     <string name="webdav_server_url">URL server</string>
     <string name="webdav_server_url_hint">https://cloud.example.com/remote.php/dav/files/user/Music</string>
     <string name="webdav_disconnect">Putuskan</string>
@@ -598,7 +594,7 @@
     <string name="smb_subtitle">Musik di folder berbagi</string>
     <string name="smb_not_configured">Hubungkan folder berbagi di Sumber</string>
     <string name="smb_empty">Tidak ada file audio di folder berbagi SMB. Periksa server di Sumber.</string>
-    <string name="smb_description">Arahkan BitChord ke folder musik bersama — NAS atau folder berbagi Windows lewat SMB.</string>
+    <string name="smb_description">Arahkan BitFuse ke folder musik bersama — NAS atau folder berbagi Windows lewat SMB.</string>
     <string name="smb_server_hint">nas.local or 192.168.1.10:4445</string>
     <string name="smb_share_hint">Nama share, mis. Music</string>
     <string name="smb_folder_hint">Folder (opsional)</string>
@@ -646,7 +642,7 @@
     </plurals>
     <string name="no_local_albums">Belum ada yang termasuk album atau playlist di sini. Unduh album atau playlist lengkap dan akan muncul di sini.</string>
     <string name="play_your_replay">Putar Replay Anda</string>
-    <string name="counted_on_device_with_bitchord">Dihitung di perangkat ini dengan BitChord</string>
+    <string name="counted_on_device_with_bitchord">Dihitung di perangkat ini dengan BitFuse</string>
     <string name="this_month">Bulan ini</string>
     <string name="this_year">Tahun ini</string>
     <string name="all_time">Sepanjang waktu</string>
@@ -697,7 +693,7 @@
     <string name="listen_together_code">Kode pesta</string>
     <string name="listen_together_code_footer">Bacakan atau kirimkan. Huruf O dan I tidak dipakai, jadi “o” selalu berarti nol.</string>
     <string name="copy_code">Salin kode</string>
-    <string name="listen_together_share_text">Dengarkan bareng aku di BitChord — kode pesta %1$s</string>
+    <string name="listen_together_share_text">Dengarkan bareng aku di BitFuse — kode pesta %1$s</string>
     <string name="listen_together_now_playing">Sedang diputar</string>
     <string name="listen_together_nothing_playing">Belum ada yang diputar</string>
     <string name="listen_together_listening">Mendengarkan · %1$d dari %2$d</string>
@@ -734,7 +730,7 @@
     <string name="listen_together_custom_server_dialog_message">Pesta ini di-host di server eksternal:\n\n%1$s\n\nMau mengganti server pesta dan ikut pesta %2$s?</string>
     <string name="listen_together_custom_server_switch_and_join">Ganti &amp; Ikut</string>
     <string name="listen_together_official_server_dialog_title">Beralih ke server resmi?</string>
-    <string name="listen_together_official_server_dialog_message">Pesta ini di-host di server resmi BitChord.\n\nMau kembali ke server resmi dan ikut pesta %1$s?</string>
+    <string name="listen_together_official_server_dialog_message">Pesta ini di-host di server resmi BitFuse.\n\nMau kembali ke server resmi dan ikut pesta %1$s?</string>
     <string name="listen_together_switch_failed_stayed_in_party">Gagal ikut pesta: %1$s. Tetap di pesta %2$s.</string>
     <string name="listen_together_switch_failed">Gagal ikut pesta: %1$s.</string>
     <string name="listen_together_ping">%1$d ms</string>
@@ -770,10 +766,11 @@
 
     <string name="add_addon">Tambah addon</string>
 
-    <string name="add_addon_detail">Arahkan BitChord ke server addon yang Anda miliki atau bagikan tautan</string>
+    <string name="add_addon_detail">Arahkan BitFuse ke server addon yang Anda miliki atau bagikan tautan</string>
 
     <string name="addon_url_description">Tempel URL addon — direktori utama atau manifest.json.</string>
 
+    <string name="advanced_options">Opsi lanjutan</string>
 
     <string name="automix_mode_balanced">Seimbang</string>
 
@@ -839,14 +836,9 @@
     <string name="playlist_sync_done_title">Ditambahkan ke %1$s: %2$d</string>
     <string name="playlist_updates_channel">Pembaruan playlist</string>
 
-    <string name="player_theme">Tema pemutar</string>
-    <string name="player_theme_default">Default</string>
-    <string name="player_theme_legacy">Lama</string>
-    <string name="player_theme_simple">Sederhana</string>
-    <string name="player_theme_default_subtitle">Warna sampul berlanjut di bawahnya</string>
-    <string name="player_theme_simple_subtitle">Sampul buram di belakang seluruh pemutar</string>
+    <string name="legacy_mesh_gradient">Gradien mesh klasik</string>
 
-    <string name="player_theme_legacy_subtitle">Kembalikan efek warna mengalir di belakang pemutar dari v1.5</string>
+    <string name="legacy_mesh_gradient_subtitle">Kembalikan efek warna mengalir di belakang pemutar dari v1.5</string>
 
     <string name="liquid_glass">Kaca Cair</string>
 
@@ -988,7 +980,7 @@
 
     <string name="source_skipped_by_quality">Tidak digunakan pada %1$s · kualitas diatur ke %2$s</string>
 
-    <string name="source_unrecognised">BitChord tidak mengenali tautan tersebut</string>
+    <string name="source_unrecognised">BitFuse tidak mengenali tautan tersebut</string>
 
     <string name="start_radio">Mulai radio</string>
 
@@ -1023,7 +1015,7 @@
 
     <string name="auto_login_title">Sign in to YouTube on your phone</string>
 
-    <string name="auto_login_subtitle">Open BitChord on your phone to sign in</string>
+    <string name="auto_login_subtitle">Open BitFuse on your phone to sign in</string>
 
     <string name="auto_empty_recents_title">No recent songs</string>
 
@@ -1054,20 +1046,10 @@
     <string name="settings_search_empty">No settings match “%1$s”</string>
 
 
-    <string name="content_preferences">Content Preferences</string>
-    <string name="hide_recents">Hide Recents</string>
-    <string name="hide_home_videos">Hide videos from Home</string>
-    <string name="hide_home_videos_subtitle">Shelves of only videos go too. Search, artists and playlists still show them</string>
-    <string name="hide_top_picks">Hide Top Picks for You</string>
-    <string name="hide_home_moods">Hide Find Your Mood</string>
-    <string name="square_video_thumbnails">Square video thumbnails</string>
-    <string name="square_video_thumbnails_subtitle">Show music videos as squares everywhere, including the player</string>
-    <string name="prefer_music_only">Prefer music-only version</string>
-    <string name="prefer_music_only_subtitle">Music videos play as their audio version, and the next track in the queue is converted ahead of time so Automix and crossfade work</string>
     <string name="smart_version_alignment">Penyelarasan audio cerdas</string>
     <string name="smart_version_alignment_subtitle">Menganalisis gelombang audio untuk mencocokkan momen pemutaran yang tepat</string>
 
-    <string name="equalizer_footer">Shapes the sound inside BitChord, before it reaches the system.</string>
+    <string name="equalizer_footer">Shapes the sound inside BitFuse, before it reaches the system.</string>
 
     <string name="equalizer_dynamic">Dynamic</string>
 
@@ -1110,7 +1092,7 @@
 
     <string name="system_equalizer_subtitle">Your device\'s own panel</string>
 
-    <string name="system_equalizer_footer">Runs after BitChord\'s, on the whole audio session. Using both applies both.</string>
+    <string name="system_equalizer_footer">Runs after BitFuse\'s, on the whole audio session. Using both applies both.</string>
 
     <string name="eq_preset_flat">Flat</string>
 
@@ -1250,8 +1232,6 @@
 
 
     <string name="source_needs_lossless_output">Perlu output lossless · gunakan perangkat yang mendukung lossless</string>
-    <string name="source_needs_update">Addon ini sudah usang. Addon masih berfungsi, tetapi minta pengembangnya memperbaruinya dengan mengikuti dokumentasi addon BitChord terbaru.</string>
-    <string name="source_outdated">Addon usang</string>
     <string name="source_needs_lossless_bt_codec">Perlu output lossless · Bluetooth memakai %1$s; gunakan perangkat yang mendukung lossless</string>
     <string name="source_needs_lossless_bt_unknown">Perlu output lossless · codec Bluetooth yang dipakai tidak bisa diketahui</string>
     <string name="source_downloads_on">Unduhan diizinkan</string>
@@ -1302,6 +1282,18 @@
     <string name="spotify_sign_in">Masuk dengan Spotify</string>
     <string name="spotify_use_spdc_token">Gunakan token sp_dc</string>
     <string name="spotify_track_unavailable">Lagu itu tidak ditemukan di YouTube Music</string>
+    <string name="equalizer_parametric">Parametrik</string>
+    <string name="equalizer_parametric_count">Jumlah pita</string>
+    <string name="equalizer_parametric_count_footer">Sepuluh pita selebar satu oktaf dan bertemu di tepinya, seperti equalizer perangkat keras. Sembilan belas pita lebih rapat, sehingga satu perubahan hanya menyentuh sedikit spektrum di sekitarnya.</string>
+    <string name="equalizer_bands_10">10 pita</string>
+    <string name="equalizer_bands_19">19 pita</string>
+    <string name="equalizer_parametric_bands">Kurva</string>
+    <string name="equalizer_parametric_footer">Setiap pita punya pusat, lebar, dan gain sendiri. Ketuk pita untuk menggesernya di sepanjang spektrum atau mengubah lebarnya.</string>
+    <string name="equalizer_band">Pita %1$d</string>
+    <string name="equalizer_band_shape">%1$s Hz · Q %2$s</string>
+    <string name="equalizer_band_frequency">Frekuensi</string>
+    <string name="equalizer_band_q">Lebar (Q)</string>
+    <string name="equalizer_band_footer">Q adalah lebar pita. Nilai rendah menggeser rentang spektrum di sekitar pusatnya; nilai tinggi hanya menyisakan takik sempit dan hampir tidak ada lagi.</string>
     <string name="artist_signatures">Tanda tangan artis</string>
     <string name="artist_signatures_subtitle">Menampilkan tanda tangan tulisan tangan saat Apple Music tidak memiliki logo judul</string>
     <string name="artist_signatures_url">URL API tanda tangan</string>
@@ -1323,7 +1315,7 @@
     <string name="replay_period_monthly">Bulanan</string>
     <string name="replay_period_yearly">Tahunan</string>
     <string name="replay_period_lifetime">Sepanjang masa</string>
-    <string name="onboarding_title">Jutaan lagu, streaming di BitChord</string>
+    <string name="onboarding_title">Jutaan lagu, streaming di BitFuse</string>
     <string name="onboarding_name_prompt">Anda ingin dipanggil apa?</string>
     <string name="onboarding_name_hint">Nama Anda</string>
     <string name="onboarding_name_footer">Teman akan melihatnya saat Anda memakai Dengarkan Bersama. Anda bisa mengubahnya nanti di Pengaturan.</string>
@@ -1333,7 +1325,7 @@
     <string name="onboarding_sign_in_google">Masuk dengan Google</string>
     <string name="onboarding_skip_sign_in">Lewati masuk</string>
     <string name="onboarding_back">Kembali</string>
-    <string name="wear_os_section">BitChord untuk Wear OS</string>
+    <string name="wear_os_section">BitFuse untuk Wear OS</string>
     <string name="wear_os_page_title">Wear OS</string>
     <string name="wear_os_your_watches">Jam tangan Anda</string>
     <string name="wear_os_value_none">Tidak ada jam tangan</string>
@@ -1343,7 +1335,7 @@
     <string name="wear_os_no_watch">Tidak ada jam tangan yang terhubung</string>
     <string name="wear_os_no_watch_subtitle">Pasangkan dulu jam tangan Wear OS dengan ponsel ini lewat aplikasi pendampingnya.</string>
     <string name="wear_os_checking">Memeriksa…</string>
-    <string name="wear_os_not_installed">BitChord tidak ada di jam tangan ini</string>
+    <string name="wear_os_not_installed">BitFuse tidak ada di jam tangan ini</string>
     <string name="wear_os_up_to_date">Terbaru · %1$s</string>
     <string name="wear_os_update_available">Pembaruan tersedia</string>
     <string name="wear_os_unknown">Terpasang · versi tidak dapat diperiksa</string>
@@ -1360,7 +1352,7 @@
     <string name="wear_os_searching">Mencari jam tangan Anda di Wi-Fi…</string>
     <string name="wear_os_found">Jam tangan ditemukan</string>
     <string name="wear_os_pairing">Memasangkan…</string>
-    <string name="wear_os_installing">Memasang BitChord di jam tangan Anda…</string>
+    <string name="wear_os_installing">Memasang BitFuse di jam tangan Anda…</string>
     <string name="wear_os_installed">Terpasang. Anda dapat mematikan Debugging nirkabel lagi.</string>
     <string name="wear_os_failed">Gagal (%1$s). Periksa kodenya dan coba lagi.</string>
     <string name="wear_os_unsupported">Memasang di jam tangan memerlukan Android 11 atau lebih baru di ponsel ini.</string>
@@ -1390,7 +1382,6 @@
     <string name="direct_source_stream">Streaming langsung dari sumber</string>
     <string name="find_your_mood">Temukan Mood Anda</string>
     <string name="progressive_blur">Blur progresif</string>
-    <string name="glass_performance">Performa kaca lebih baik</string>
     <string name="remove_from_history">Hapus dari riwayat</string>
     <string name="remove_from_history_failed">Tidak dapat menghapus dari riwayat</string>
     <string name="addon_blocked_title">Tidak dapat memutar lagu ini</string>
@@ -1409,8 +1400,8 @@
     <string name="font_footer">Lama mengembalikan huruf yang lebih tebal dan rapat yang dipakai aplikasi sebelum disamakan dengan Apple Music.</string>
     <string name="bit_perfect_output">Output bit-perfect</string>
     <string name="bit_perfect_bypassed_footer">Output bit-perfect sudah siap, jadi pengaturan yang redup dilewati dan versi Dolby Atmos tidak diminta. Semuanya berfungsi lagi saat DAC dilepas atau mode dimatikan.</string>
-    <string name="bit_perfect_sheet_warning">Mengirim trek ke DAC tanpa perubahan. Equalizer, normalisasi kenyaringan, crossfade, Automix, kecepatan putar, dan volume BitChord dilewati.</string>
-    <string name="bit_perfect_mode_off_subtitle">Audio melewati mixer Android dan efek BitChord.</string>
+    <string name="bit_perfect_sheet_warning">Mengirim trek ke DAC tanpa perubahan. Equalizer, normalisasi kenyaringan, crossfade, Automix, kecepatan putar, dan volume BitFuse dilewati.</string>
+    <string name="bit_perfect_mode_off_subtitle">Audio melewati mixer Android dan efek BitFuse.</string>
     <string name="bit_perfect_mode_usb_android">DAC USB</string>
     <string name="bit_perfect_mode_usb_android_subtitle">Android 14 membuka DAC pada rate dan kedalaman bit masing-masing trek, tanpa mixing atau resampling.</string>
     <string name="bit_perfect_requires_android_14">Memerlukan Android 14 atau lebih baru</string>
@@ -1418,13 +1409,13 @@
     <string name="bit_perfect_mode_dap_exclusive_subtitle">Untuk pemutar musik dengan DAC sendiri. Membuka output headphone atau line secara eksklusif pada rate masing-masing trek. Tidak semua perangkat memberikan mode eksklusif.</string>
     <string name="bit_perfect_requires_android_8_1">Memerlukan Android 8.1 atau lebih baru</string>
     <string name="bit_perfect_mode_usb_direct">DAC USB (driver langsung)</string>
-    <string name="bit_perfect_mode_usb_direct_subtitle">BitChord mengendalikan DAC sendiri, di versi Android apa pun, dan mengatur volumenya di DAC. Meminta izin USB. Bisa jauh lebih keras daripada output normal.</string>
+    <string name="bit_perfect_mode_usb_direct_subtitle">BitFuse mengendalikan DAC sendiri, di versi Android apa pun, dan mengatur volumenya di DAC. Meminta izin USB. Bisa jauh lebih keras daripada output normal.</string>
     <string name="dac_volume">Volume DAC</string>
     <string name="dac_volume_subtitle">Diatur di DAC itu sendiri; musik tidak diskalakan</string>
     <string name="usb_allow_fixed_volume">Izinkan DAC tanpa kontrol volume</string>
     <string name="usb_allow_fixed_volume_subtitle">Jika tidak, DAC seperti itu memutar lewat output normal</string>
     <string name="usb_allow_fixed_volume_confirm_title">Putar pada skala penuh?</string>
-    <string name="usb_allow_fixed_volume_confirm_message">BitChord tidak bisa mengatur volume DAC jenis ini, jadi DAC memutar pada skala penuh dan hanya kenopnya sendiri, jika ada, yang mengatur kenyaringan. Ini bisa sangat keras dan berbahaya dengan headphone sensitif.</string>
+    <string name="usb_allow_fixed_volume_confirm_message">BitFuse tidak bisa mengatur volume DAC jenis ini, jadi DAC memutar pada skala penuh dan hanya kenopnya sendiri, jika ada, yang mengatur kenyaringan. Ini bisa sangat keras dan berbahaya dengan headphone sensitif.</string>
     <string name="convert_for_limited_dac">Konversi untuk DAC spesifikasi rendah</string>
     <string name="convert_for_limited_dac_subtitle">Mengonversi trek di atas batas DAC Anda ke format tertingginya. Trek mungkin lebih lama dimulai dan tidak akan bit-perfect terhadap aslinya.</string>
     <string name="bit_perfect_confirm_title">Aktifkan output bit-perfect?</string>
@@ -1434,4 +1425,6 @@
     <string name="bit_perfect_status_inexact">%1$s · tidak persis: sumber ini bukan PCM lossless</string>
     <string name="bit_perfect_status_waiting">Menunggu trek lossless pada output yang didukung</string>
     <string name="bit_perfect_status_unavailable">Tidak tersedia untuk trek ini (%1$s)</string>
+    <string name="legacy_player">Pemutar 1.8</string>
+    <string name="legacy_player_subtitle">Tata letak pemutar BitChord 1.8 yang klasik</string>
 </resources>

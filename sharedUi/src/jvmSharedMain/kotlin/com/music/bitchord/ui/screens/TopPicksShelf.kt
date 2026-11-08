@@ -136,7 +136,7 @@ private const val TOP_PICK_RATIO = 0.75f
 /** Share of the row a card takes, so the next one shows past it. */
 private const val TOP_PICK_FRACTION = 0.60f
 
-/** Held back on a tablet, so a card doesn't blow up into a poster. */
+/** Held back on a tablet, the same way [heroCardWidth] is. */
 private val TOP_PICK_MAX_WIDTH = 280.dp
 
 private val TopPickShape = RoundedCornerShape(12.dp)
@@ -225,6 +225,11 @@ private class CardText(val eyebrow: String, val title: String, val subtitle: Str
 private fun cardText(pick: TopPick, listenerName: String?): CardText {
     val artist = pick.artistName.orEmpty()
     return when (pick.kind) {
+        TopPickKind.SPOTIFY_LIKED -> CardText(
+            eyebrow = "Spotify",
+            title = "Liked Songs",
+            subtitle = "Your saved music",
+        )
         TopPickKind.LATEST_RELEASE -> CardText(
             eyebrow = stringResource(Res.string.top_pick_new_from, artist),
             title = pick.title,
@@ -291,6 +296,26 @@ private fun TopPickCard(
         val eyebrowColor: Color
         val branded: Boolean
         when (pick.kind) {
+            TopPickKind.SPOTIFY_LIKED -> {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFF1DB954), Color(0xFF087F3D), Color(0xFF064B2A)),
+                            ),
+                        ),
+                ) {
+                    Text(
+                        text = "♥",
+                        color = Color.White.copy(alpha = 0.92f),
+                        fontSize = 78.sp,
+                        modifier = Modifier.align(Alignment.Center).offset(y = (-18).dp),
+                    )
+                }
+                eyebrowColor = Color.White.copy(alpha = 0.84f)
+                branded = false
+            }
             TopPickKind.PERSONAL_STATION -> {
                 PersonalStationArt(Modifier.fillMaxSize())
                 eyebrowColor = Color(0xFFFFD2DA)

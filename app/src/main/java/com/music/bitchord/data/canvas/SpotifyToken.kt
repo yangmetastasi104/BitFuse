@@ -136,8 +136,16 @@ internal object SpotifyToken {
 
         val cookieManager = CookieManager.getInstance().apply {
             setAcceptCookie(true)
-            setCookie("https://open.spotify.com/", "sp_dc=$cookie; Domain=.spotify.com; Path=/; Secure")
-            setCookie("https://accounts.spotify.com/", "sp_dc=$cookie; Domain=.spotify.com; Path=/; Secure")
+            val header = AppSettings.spotifyCookieHeader.value
+            val pairs = header.split(';').mapNotNull { it.trim().takeIf { p -> p.contains('=') } }
+            for (pair in pairs) {
+                setCookie("https://open.spotify.com/", "$pair; Domain=.spotify.com; Path=/; Secure")
+                setCookie("https://accounts.spotify.com/", "$pair; Domain=.spotify.com; Path=/; Secure")
+            }
+            if (pairs.isEmpty()) {
+                setCookie("https://open.spotify.com/", "sp_dc=$cookie; Domain=.spotify.com; Path=/; Secure")
+                setCookie("https://accounts.spotify.com/", "sp_dc=$cookie; Domain=.spotify.com; Path=/; Secure")
+            }
             flush()
         }
         // The player caches its token in web storage and skips a fresh

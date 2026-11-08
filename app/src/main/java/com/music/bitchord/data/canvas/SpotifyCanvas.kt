@@ -60,7 +60,168 @@ object SpotifyCanvas {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val CANVAS_URL_REGEX = Regex("""https://[^"'\s\x00-\x1F]+\.cnvs\.mp4""")
 
+    /**
+     * Spotify track URI for a title/artist that did not come from a Spotify
+     * row — the case of a song searched inside BitFuse. Returns null when the
+     * catalogue has no defensible match, which is the honest answer for a
+     * track Spotify doesn't carry.
+     *
+     * [search] above is strict because a wrong canvas is merely the wrong
+     * artwork; a wrong match here would report someone else's song on the
+     * listener's account. So: REST search (which carries title, artists and
+     * duration) with a scored match, and Pathfinder only when REST answered
+     * nothing at all.
+     */
+    /** What the search found, and enough of why to diagnose a miss from a log. */
+    data class TrackSearchResult(val uri: String?, val detail: String)
+
+    suspend fun searchTrackUri(
+        title: String,
+        artist: String,
+        durationMs: Long?,
+        cookieHeader: String? = null,
+    ): TrackSearchResult {
+        if (title.isBlank()) return TrackSearchResult(null, "empty title")
+        val token = SpotifyToken.accessToken() ?: return TrackSearchResult(null, "no bearer token")
+
+        val queries = buildList {
+            add(listOf(title, artist).filter { it.isNotBlank() }.joinToString(" "))
+            if (artist.isNotBlank()) add(title)
+        }.distinct()
+
+        val notes = mutableListOf<String>()
+        for (query in queries) {
+            val result = webSearch(query, token, cookieHeader)
+            if (result.candidates == null) {
+                notes += result.detail
+                continue
+            }
+            notes += "web ${result.candidates.size} hits"
+            pickBest(result.candidates, title, artist, durationMs)?.let { uri ->
+                return TrackSearchResult(uri, "matched via web (\"$query\")")
+            }
+        }
+
+        // Web API unreachable or nothing scored: fall back to the web
+        // player's own search, which ranks by relevance alone.
+        val pathfinder = runCatching { searchViaPathfinder(title, artist, null, token)?.uri }.getOrNull()
+        return if (pathfinder != null) {
+            TrackSearchResult(pathfinder, "matched via pathfinder")
+        } else {
+            TrackSearchResult(null, notes.joinToString("; ").ifBlank { "no candidates" })
+        }
+    }
+
+    private data class SearchCandidate(
+        val uri: String,
+        val title: String,
+        val artists: List<String>,
+        val durationMs: Long?,
+    )
+
+    private data class WebSearchResult(val candidates: List<SearchCandidate>?, val detail: String)
+
+    /** Null candidates mean the request failed; an empty list means Spotify found nothing. */
+    private fun webSearch(
+        query: String,
+        token: String,
+        cookieHeader: String?,
+    ): WebSearchResult {
+        val url = SEARCH_URL.toHttpUrl().newBuilder()
+            .addQueryParameter("q", query)
+            .addQueryParameter("type", "track")
+            .addQueryParameter("limit", "10")
+            .addQueryParameter("market", "from_token")
+            .build()
+            .toString()
+
+        // The cookie matters: api.spotify.com treats a bearer-only call from
+        // this kind of token as anonymous and answers 429 often enough that
+        // the search looked broken. Same headers the web player sends.
+        val headers = authHeaders(token).toMutableMap()
+        headers["Accept"] = "application/json"
+        headers["App-Platform"] = "WebPlayer"
+        headers["Referer"] = "https://open.spotify.com/"
+        headers["Origin"] = "https://open.spotify.com"
+        cookieHeader?.takeIf { it.isNotBlank() }?.let { headers["Cookie"] = it }
+
+        val (code, body) = canvasGetWithStatus(url, headers)
+        if (body == null) {
+            Log.w(TAG, "track search failed, http $code ($query)")
+            return WebSearchResult(null, "web HTTP $code")
+        }
+        val root = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull()
+            ?: return WebSearchResult(null, "web body unparsable")
+        val items = root["tracks"]?.jsonObject?.get("items")?.jsonArray
+            ?: return WebSearchResult(emptyList(), "web no tracks field")
+        val candidates = items.mapNotNull { item ->
+            val track = item.jsonObject
+            val uri = track["uri"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val name = track["name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val artists = track["artists"]?.jsonArray
+                ?.mapNotNull { it.jsonObject["name"]?.jsonPrimitive?.contentOrNull }
+                .orEmpty()
+            val duration = track["duration_ms"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
+            SearchCandidate(uri, name, artists, duration)
+        }
+        return WebSearchResult(candidates, "web ${candidates.size} hits")
+    }
+
+    /**
+     * Scores catalogue hits against what was played. Title equality beats a
+     * word-boundary prefix ("Song" against "Song (Official Video)"), every
+     * wanted artist being credited beats only one, and anything whose length
+     * is more than six seconds off the row's own duration is rejected — that
+     * is what keeps a live take or a remix from standing in for the album cut.
+     */
+    private fun pickBest(
+        candidates: List<SearchCandidate>,
+        title: String,
+        artist: String,
+        durationMs: Long?,
+    ): String? {
+        val wantTitle = title.normalizeForMatch()
+        val wantArtists = splitArtists(artist)
+        var best: SearchCandidate? = null
+        var bestScore = 0
+
+        for (candidate in candidates) {
+            val gotTitle = candidate.title.normalizeForMatch()
+            val titleScore = when {
+                gotTitle == wantTitle -> 3
+                gotTitle.startsWith("$wantTitle ") || wantTitle.startsWith("$gotTitle ") -> 1
+                else -> 0
+            }
+            if (titleScore == 0) continue
+
+            val credited = candidate.artists.map { it.normalizeForMatch() }.filter { it.isNotBlank() }
+            val artistScore = when {
+                wantArtists.isEmpty() -> 1
+                wantArtists.all { want -> credited.any { it.contains(want) } } -> 2
+                wantArtists.any { want -> credited.any { it.contains(want) } } -> 1
+                else -> 0
+            }
+            if (artistScore == 0) continue
+
+            val wantDuration = durationMs?.takeIf { it > 0L }
+            val gotDuration = candidate.durationMs?.takeIf { it > 0L }
+            if (wantDuration != null && gotDuration != null &&
+                kotlin.math.abs(gotDuration - wantDuration) > 6_000L
+            ) {
+                continue
+            }
+
+            val score = titleScore * 10 + artistScore
+            if (score > bestScore) {
+                bestScore = score
+                best = candidate
+            }
+        }
+        return best?.uri
+    }
+
     private data class TrackHit(val uri: String, val title: String, val artist: String, val album: String?)
+
 
     suspend fun search(title: String, artist: String, album: String?): CanvasArtwork? {
         val token = SpotifyToken.accessToken()

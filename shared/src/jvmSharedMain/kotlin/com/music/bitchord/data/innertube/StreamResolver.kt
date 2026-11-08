@@ -260,6 +260,7 @@ object StreamResolver {
      * outside the buffer, and each range the cache fills in.
      */
     suspend fun resolve(videoId: String): String {
+        YtmNetwork.requirePlayback()
         init
 
         recent[videoId]
@@ -427,6 +428,13 @@ object StreamResolver {
     private suspend fun resolveUncached(videoId: String): Stream {
         val resolveStart = MonotonicClock.nowMs()
         val stream = try {
+            // SoundCloud home/search rows carry their canonical permalink instead
+            // of a YouTube video id. NewPipe has a dedicated extractor for it;
+            // sending the URL through InnerTube would silently turn it into a
+            // YouTube watch URL and make every SoundCloud row unplayable.
+            if (videoId.startsWith("https://soundcloud.com/", ignoreCase = true)) {
+                timed("SoundCloud NewPipe") { newPipeStream(videoId, ::pickForQuality) }
+            } else {
             timed("$videoId InnerTubeX") { innerTubeXStreamAllowingUploads(videoId) }
                 ?.let { found ->
                     // A live broadcast's adaptive URL is one window of a stream
@@ -439,6 +447,7 @@ object StreamResolver {
                     TrackLog.w(TAG, "InnerTubeX found no usable stream for $videoId; falling back to extraction")
                     timed("$videoId newPipeStream") { newPipeStream(videoId, ::pickForQuality) }
                 }
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: LinkageError) {
@@ -681,6 +690,7 @@ object StreamResolver {
         maxKbps: Int,
         requireM4a: Boolean = false,
     ): Stream {
+        YtmNetwork.requirePlayback()
         val stream = downloadStream(videoId, maxKbps, requireM4a)
         val allowed = if (requireM4a) setOf("m4a") else setOf("m4a", "webm")
         check(stream.downloadExtension in allowed) {
@@ -791,6 +801,7 @@ object StreamResolver {
      * against a first parse that costs seconds.
      */
     suspend fun signatureTimestamp(videoId: String): Int? {
+        if (YtmNetwork.isPlaybackDisabled()) return null
         cachedSignatureTimestamp?.let { return it }
         return runCatching {
             jsPlayerManager { YoutubeJavaScriptPlayerManager.getSignatureTimestamp(videoId) }
@@ -1135,16 +1146,22 @@ object StreamResolver {
     ): Stream = extractionGate.withLock {
         withContext(Dispatchers.IO) {
             val waited = MonotonicClock.nowMs()
-            val extractor = ServiceList.YouTube.getStreamExtractor(
-                "https://www.youtube.com/watch?v=$videoId",
-            )
+            val extractor = if (videoId.startsWith("https://soundcloud.com/", ignoreCase = true)) {
+                ServiceList.SoundCloud.getStreamExtractor(videoId)
+            } else {
+                ServiceList.YouTube.getStreamExtractor("https://www.youtube.com/watch?v=$videoId")
+            }
             extractor.fetchPage()
-            val candidates = extractor.audioStreams
-                // Progressive only — DASH/HLS entries carry a manifest, not a URL.
-                .filter {
-                    !it.content.isNullOrBlank() &&
-                        it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP
-                }
+            val audioStreams = extractor.audioStreams
+            TrackLog.d(
+                TAG,
+                "NewPipe ${if (videoId.startsWith("https://soundcloud.com/", ignoreCase = true)) "SoundCloud" else "YouTube"} returned " +
+                    "${audioStreams.size} audio streams: " + audioStreams.joinToString { "${it.deliveryMethod}/${it.format?.name}/${it.averageBitrate}kbps" },
+            )
+            // SoundCloud commonly exposes HLS manifests rather than progressive
+            // audio. Keep those candidates: Media3 can play the manifest URL
+            // directly, and dropping them here made valid SC tracks look empty.
+            val candidates = audioStreams.filter { !it.content.isNullOrBlank() }
             val stream = select(candidates.map { it.averageBitrate to it })
                 ?: error("Track unavailable: no audio streams")
             TrackLog.d(
@@ -1158,7 +1175,11 @@ object StreamResolver {
             Stream(
                 url = stream.content,
                 kbps = stream.averageBitrate,
-                mimeType = stream.mime,
+                mimeType = if (stream.content.substringBefore('?').endsWith(".m3u8", ignoreCase = true)) {
+                    "application/x-mpegURL"
+                } else {
+                    stream.mime
+                },
             )
         }
     }

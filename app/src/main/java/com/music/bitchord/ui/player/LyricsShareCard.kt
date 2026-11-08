@@ -4,7 +4,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
+import android.graphics.Shader
 import com.music.bitchord.ui.replay.Fonts
 import com.music.bitchord.ui.replay.drawArtwork
 import com.music.bitchord.ui.replay.drawBackdrop
@@ -54,9 +58,12 @@ internal suspend fun renderLyricsShareCard(
     card: LyricsShareRequest,
     /** Pad out to the full 1080×1920 frame, the passage centred in the room. */
     story: Boolean = false,
+    style: LyricsCardStyle? = null,
 ): Bitmap = withContext(Dispatchers.Default) {
     val type = Fonts(context)
     val cover = card.artworkUrl?.let { loadBitmap(context, it) }
+    val custom = style?.takeUnless { it == LyricsCardStyle.DEFAULT }
+    val theme = custom?.theme ?: LyricsCardTheme.BITFUSE
 
     // ── Sizing ──────────────────────────────────────────────────────────────
     // No room is reserved for the words to sit in: they get their own height,
@@ -64,9 +71,10 @@ internal suspend fun renderLyricsShareCard(
     // barely taller than its own text instead of a 9:16 sheet with a paragraph
     // floating in the middle of it, and the size comes down only as far as the
     // ladder goes — past that the frame gives rather than the type does.
-    val headTop = HEADER_BOTTOM + GAP_ABOVE_BODY
-    val frameRoom = MAX_CARD_H - FOOTER_THUMB - FOOTER_PAD - GAP_BELOW_BODY - headTop
-    val plan = fittestPlan(type, card.lines, frameRoom)
+    val headTop = (if (custom?.showBrand == false) 48f else HEADER_BOTTOM) + GAP_ABOVE_BODY
+    val footerReserve = if (custom?.showTrackInfo == false) FOOTER_PAD else FOOTER_THUMB + FOOTER_PAD
+    val frameRoom = MAX_CARD_H - footerReserve - GAP_BELOW_BODY - headTop
+    val plan = fittestPlan(type, card.lines, frameRoom, custom)
     // A story is always the whole frame, so the spare room is split above and
     // below the passage; otherwise the card is only as tall as its words.
     val spare = if (story) (frameRoom - plan.content).coerceAtLeast(0f) else 0f
@@ -77,26 +85,65 @@ internal suspend fun renderLyricsShareCard(
     // land past the bottom by a rounding error and be replaced by a mark
     // saying something was left out.
     val bodyBottom = bodyTop + plan.content
-    val cardH = bodyBottom + spare / 2 + GAP_BELOW_BODY + FOOTER_THUMB + FOOTER_PAD
+    val cardH = bodyBottom + spare / 2 + GAP_BELOW_BODY + footerReserve
 
     val bitmap = Bitmap.createBitmap(CARD_W, cardH.roundToInt(), Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
-    drawBackdrop(canvas, cover, 0f, cardH)
+    if (custom != null && custom.cornerRadius > 0f) {
+        val rounded = Path().apply {
+            addRoundRect(RectF(0f, 0f, CARD_W.toFloat(), cardH), custom.cornerRadius, custom.cornerRadius, Path.Direction.CW)
+        }
+        canvas.clipPath(rounded)
+    }
+    when (custom?.background) {
+        LyricsCardBackground.SOLID -> canvas.drawColor(custom.backgroundStart)
+        LyricsCardBackground.GRADIENT -> {
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = LinearGradient(0f, 0f, CARD_W.toFloat(), cardH, custom.backgroundStart, custom.backgroundEnd, Shader.TileMode.CLAMP)
+            }
+            canvas.drawRect(0f, 0f, CARD_W.toFloat(), cardH, paint)
+        }
+        else -> drawBackdrop(canvas, cover, 0f, cardH)
+    }
+
+    when (theme) {
+        LyricsCardTheme.RUSHED, LyricsCardTheme.ALBUM_ART -> if (custom?.background == LyricsCardBackground.ARTWORK) {
+            drawFullCoverBackdrop(canvas, cover, cardH)
+        }
+        LyricsCardTheme.HYPNOTIC -> drawHypnoticBackdrop(
+            canvas, cardH, custom?.backgroundStart ?: 0xFF1F1235.toInt(),
+            custom?.backgroundEnd ?: 0xFF70458A.toInt(), custom?.background == LyricsCardBackground.GRADIENT,
+        )
+        LyricsCardTheme.BRAT -> if (custom?.background == LyricsCardBackground.SOLID) canvas.drawColor(custom.backgroundStart)
+        else -> Unit
+    }
 
     // ── Header ──────────────────────────────────────────────────────────────
     // The mark alone, at the top right — the same one the Replay carries, so
     // two of these cards still read as one family. Nothing else goes above
     // the passage: the picture is the verse, not a caption for it.
-    val brand = type.heading(46f, 0xE6FFFFFF.toInt()).apply {
+    val brand = type.heading(46f, custom?.textColor ?: 0xE6FFFFFF.toInt(), custom?.font).apply {
         textAlign = Paint.Align.RIGHT
     }
-    canvas.drawText(BRAND, CARD_W - CARD_MARGIN, HEADER_BASELINE, brand)
-    drawLogo(
-        canvas,
-        context,
-        CARD_W - CARD_MARGIN - brand.measureText(BRAND) - LOGO_GAP,
-        HEADER_BASELINE,
-    )
+    if (theme == LyricsCardTheme.SPOTIFY && custom != null) {
+        drawArtwork(canvas, cover, card.song.title, CARD_MARGIN, 54f, 140f, custom.artworkShape == LyricsCardArtworkShape.CIRCLE, 0.20f)
+        val titlePaint = type.body(52f, custom.textColor, bold = true, font = custom.font)
+        val artistPaint = type.body(40f, custom.textColor, font = custom.font)
+        canvas.drawText(ellipsised(card.song.title, titlePaint, 700f), 246f, 112f, titlePaint)
+        canvas.drawText(ellipsised(card.song.artist, artistPaint, 700f), 246f, 168f, artistPaint)
+    } else if (theme == LyricsCardTheme.QUOTE && custom != null) {
+        val quote = type.heading(150f, custom.textColor, custom.font)
+        canvas.drawText("“", CARD_W / 2f, 205f, quote.apply { textAlign = Paint.Align.CENTER })
+    } else if (theme == LyricsCardTheme.VERTICAL && custom != null) {
+        val vertical = type.label(36f, custom.textColor)
+        canvas.save()
+        canvas.rotate(-90f, 62f, cardH / 2f)
+        canvas.drawText("${card.song.title} · ${card.song.artist}", 62f, cardH / 2f, vertical.apply { textAlign = Paint.Align.CENTER })
+        canvas.restore()
+    } else if (custom?.showBrand != false) {
+        canvas.drawText(BRAND, CARD_W - CARD_MARGIN, HEADER_BASELINE, brand)
+        drawLogo(canvas, context, CARD_W - CARD_MARGIN - brand.measureText(BRAND) - LOGO_GAP, HEADER_BASELINE)
+    }
 
     // ── The passage ─────────────────────────────────────────────────────────
     // Every row that exists is drawn: the frame below is measured from
@@ -106,21 +153,55 @@ internal suspend fun renderLyricsShareCard(
     for (row in plan.rows) {
         val baseline = y + row.gapBefore - row.paint.ascent() +
             if (row.isGap) row.paint.textSize * GAP_MARKER_OFFSET else 0f
-        val x = if (row.centered) CARD_W / 2f else CARD_MARGIN
-        canvas.drawText(row.text, x, baseline, row.paint)
+        val x = when {
+            row.centered || custom?.alignment == LyricsCardAlignment.CENTER -> CARD_W / 2f
+            custom?.theme == LyricsCardTheme.VERTICAL -> CARD_W - CARD_MARGIN
+            custom?.alignment == LyricsCardAlignment.RIGHT -> CARD_W - CARD_MARGIN
+            else -> CARD_MARGIN
+        }
+        if (!row.centered && custom?.alignment != null) row.paint.textAlign = when (custom.alignment) {
+            LyricsCardAlignment.LEFT -> Paint.Align.LEFT
+            LyricsCardAlignment.CENTER -> Paint.Align.CENTER
+            LyricsCardAlignment.RIGHT -> Paint.Align.RIGHT
+        }
+        if (theme == LyricsCardTheme.MESSY) {
+            canvas.save()
+            canvas.rotate(((plan.rows.indexOf(row) % 5) - 2) * 2.5f, x, baseline)
+            canvas.drawText(row.text, x, baseline, row.paint)
+            canvas.restore()
+        } else {
+            if (theme == LyricsCardTheme.COUPLET && plan.rows.indexOf(row) < 2) {
+                canvas.save()
+                canvas.scale(1.12f, 1.12f, x, baseline)
+                canvas.drawText(row.text, x, baseline, row.paint)
+                canvas.restore()
+            } else {
+                canvas.drawText(row.text, x, baseline, row.paint)
+            }
+        }
         y += row.gapBefore + row.height
     }
 
     // ── Footer ──────────────────────────────────────────────────────────────
     // Which song this is — which only the backdrop had been saying until now.
-    val thumbY = cardH - FOOTER_PAD - FOOTER_THUMB
-    drawArtwork(canvas, cover, card.song.title, CARD_MARGIN, thumbY, FOOTER_THUMB, false)
-    val textX = CARD_MARGIN + FOOTER_THUMB + 34f
-    val room = CARD_W - CARD_MARGIN - textX
-    val title = type.body(50f, Color.WHITE, bold = true)
-    canvas.drawText(ellipsised(card.song.title, title, room), textX, thumbY + 74f, title)
-    val artist = type.body(42f, 0x99FFFFFF.toInt())
-    canvas.drawText(ellipsised(card.song.artist, artist, room), textX, thumbY + 132f, artist)
+    if (theme == LyricsCardTheme.QUOTE && custom != null) {
+        val signature = type.body(36f, custom.textColor, font = custom.font)
+        canvas.drawText("${card.song.title} · ${card.song.artist}", CARD_W / 2f, cardH - 80f, signature.apply { textAlign = Paint.Align.CENTER })
+    } else if (custom?.showTrackInfo != false && theme != LyricsCardTheme.SPOTIFY && theme != LyricsCardTheme.ALBUM_ART) {
+        val thumbY = cardH - FOOTER_PAD - FOOTER_THUMB
+        val artRadius = when (custom?.artworkShape) {
+            LyricsCardArtworkShape.SQUARE -> 0f
+            LyricsCardArtworkShape.ROUNDED -> 0.25f
+            LyricsCardArtworkShape.CIRCLE, null -> null
+        }
+        drawArtwork(canvas, cover, card.song.title, CARD_MARGIN, thumbY, FOOTER_THUMB, custom?.artworkShape == LyricsCardArtworkShape.CIRCLE, artRadius)
+        val textX = CARD_MARGIN + FOOTER_THUMB + 34f
+        val room = CARD_W - CARD_MARGIN - textX
+        val title = type.body(50f, custom?.textColor ?: Color.WHITE, bold = true, font = custom?.font)
+        canvas.drawText(ellipsised(card.song.title, title, room), textX, thumbY + 74f, title)
+        val artist = type.body(42f, custom?.textColor?.let { (it and 0x00FFFFFF) or 0x99000000.toInt() } ?: 0x99FFFFFF.toInt(), font = custom?.font)
+        canvas.drawText(ellipsised(card.song.artist, artist, room), textX, thumbY + 132f, artist)
+    }
 
     bitmap
 }
@@ -157,12 +238,13 @@ private fun fittestPlan(
     type: Fonts,
     lines: List<LyricsShareLine>,
     room: Float,
+    style: LyricsCardStyle?,
 ): Plan {
     for (size in FIT_LADDER) {
-        val plan = planAt(type, lines, size)
+        val plan = planAt(type, lines, size, style)
         if (plan.content <= room) return plan
     }
-    return planAt(type, lines, FIT_LADDER.last())
+    return planAt(type, lines, FIT_LADDER.last(), style)
 }
 
 /**
@@ -175,10 +257,12 @@ private fun fittestPlan(
  * the divisions: -0.7 over 34 for the words, -0.7 over 20 for the smaller line
  * the panel hangs underneath them.
  */
-private fun planAt(type: Fonts, lines: List<LyricsShareLine>, size: Float): Plan {
-    val primary = type.heading(size, Color.WHITE).apply { letterSpacing = TRACKING }
-    val subSize = (size * SUB_RATIO).coerceAtLeast(SUB_FLOOR)
-    val secondary = type.heading(subSize, SUB_COLOR).apply { letterSpacing = SUB_TRACKING }
+private fun planAt(type: Fonts, lines: List<LyricsShareLine>, size: Float, style: LyricsCardStyle?): Plan {
+    val scaledSize = size * (style?.fontScale ?: 1f)
+    val primary = type.heading(scaledSize, style?.textColor ?: Color.WHITE, style?.font).apply { letterSpacing = TRACKING }
+    val subSize = (scaledSize * SUB_RATIO).coerceAtLeast(SUB_FLOOR)
+    val secondaryColor = style?.textColor?.let { (it and 0x00FFFFFF) or 0xD9000000.toInt() } ?: SUB_COLOR
+    val secondary = type.heading(subSize, secondaryColor, style?.font).apply { letterSpacing = SUB_TRACKING }
 
     val rows = mutableListOf<Row>()
     lines.forEachIndexed { index, line ->
@@ -188,7 +272,7 @@ private fun planAt(type: Fonts, lines: List<LyricsShareLine>, size: Float): Plan
             // and a dim grey. Keep its row compact so the marker follows the
             // preceding lyric closely; the regular gap on the next lyric line
             // provides the separation below it.
-            val marker = type.body(size * 0.65f, 0x66FFFFFF.toInt())
+            val marker = type.body(scaledSize * 0.65f, style?.textColor?.let { (it and 0x00FFFFFF) or 0x66000000 } ?: 0x66FFFFFF.toInt(), font = style?.font)
             val markerHeight = marker.descent() - marker.ascent()
             rows += Row("(...)", marker, markerHeight, 0f, isGap = true)
             return@forEachIndexed
@@ -203,7 +287,7 @@ private fun planAt(type: Fonts, lines: List<LyricsShareLine>, size: Float): Plan
                 firstOfLine && index > 0 -> size * 0.55f
                 else -> 0f
             }
-            rows += Row(text, paint, height, gap)
+            rows += Row(text, paint, height * (style?.lineSpacing ?: 1f), gap)
             firstOfLine = false
         }
         wrap(line.text, primary, CARD_CONTENT_W).forEach { add(it, primary, size * LEAD) }
@@ -267,7 +351,7 @@ private const val CARD_MARGIN = 72f
 private const val CARD_CONTENT_W = CARD_W - CARD_MARGIN * 2
 
 private const val LOGO_GAP = 20f
-private const val BRAND = "BitChord"
+private const val BRAND = "BitFuse"
 
 /** Baseline of the mark at the top right, and just under it where the gap starts. */
 private const val HEADER_BASELINE = 132f
@@ -316,3 +400,60 @@ private const val SUB_LEAD = 25f / 20f
 /** The sub-line against the words above it, and the white it is drawn in. */
 private const val SUB_RATIO = 20f / 34f
 private val SUB_COLOR = 0xD9FFFFFF.toInt()
+
+private fun drawFullCoverBackdrop(canvas: Canvas, cover: Bitmap?, height: Float) {
+    if (cover != null) {
+        canvas.drawBitmap(cover, null, RectF(0f, 0f, CARD_W.toFloat(), height), Paint(Paint.ANTI_ALIAS_FLAG))
+    } else {
+        canvas.drawColor(0xFF292044.toInt())
+    }
+    val overlay = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        shader = LinearGradient(
+            0f, 0f, 0f, height,
+            intArrayOf(0x44000000, 0x99000000.toInt(), 0xDD000000.toInt()),
+            floatArrayOf(0f, 0.48f, 1f), Shader.TileMode.CLAMP,
+        )
+    }
+    canvas.drawRect(0f, 0f, CARD_W.toFloat(), height, overlay)
+}
+
+private fun drawHypnoticBackdrop(canvas: Canvas, height: Float, first: Int, second: Int, gradientBase: Boolean) {
+    if (gradientBase) {
+        val base = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(0f, 0f, CARD_W.toFloat(), height, first, second, Shader.TileMode.CLAMP)
+        }
+        canvas.drawRect(0f, 0f, CARD_W.toFloat(), height, base)
+    }
+    val rings = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 18f
+        color = 0x44FFFFFF
+    }
+    val centerX = CARD_W * 0.72f
+    val centerY = height * 0.53f
+    for (ring in 1..9) canvas.drawCircle(centerX, centerY, ring * 112f, rings)
+}
+
+internal enum class LyricsCardBackground { ARTWORK, GRADIENT, SOLID }
+internal enum class LyricsCardTheme { BITFUSE, SPOTIFY, RUSHED, VERTICAL, COUPLET, ALBUM_ART, HYPNOTIC, QUOTE, MESSY, BRAT }
+internal enum class LyricsCardAlignment { LEFT, CENTER, RIGHT }
+internal enum class LyricsCardFont { BITFUSE, SANS, SERIF, MONOSPACE, ROUNDED }
+internal enum class LyricsCardArtworkShape { ROUNDED, SQUARE, CIRCLE }
+
+internal data class LyricsCardStyle(
+    val background: LyricsCardBackground = LyricsCardBackground.ARTWORK,
+    val backgroundStart: Int = 0xFF292044.toInt(),
+    val backgroundEnd: Int = 0xFF824C72.toInt(),
+    val theme: LyricsCardTheme = LyricsCardTheme.BITFUSE,
+    val textColor: Int = Color.WHITE,
+    val font: LyricsCardFont = LyricsCardFont.BITFUSE,
+    val alignment: LyricsCardAlignment = LyricsCardAlignment.LEFT,
+    val fontScale: Float = 1f,
+    val lineSpacing: Float = 1f,
+    val cornerRadius: Float = 0f,
+    val artworkShape: LyricsCardArtworkShape = LyricsCardArtworkShape.ROUNDED,
+    val showBrand: Boolean = true,
+    val showTrackInfo: Boolean = true,
+) {
+    companion object { val DEFAULT = LyricsCardStyle() }
+}

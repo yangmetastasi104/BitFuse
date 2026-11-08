@@ -156,6 +156,7 @@ object Innertube {
      *   since an id can be burned while the session around it is fine.
      */
     suspend fun ensureVisitorData(refresh: Boolean = false): String? {
+        if (YtmNetwork.isCatalogDisabled()) return null
         if (!refresh && visitorData != null) return visitorData
         runCatching { fetchVisitorData() }
             .onFailure { Log.w(TAG, "could not mint a visitor id: ${it.message}") }
@@ -176,6 +177,7 @@ object Innertube {
      * so the id is found by shape rather than by a path that would rot.
      */
     private suspend fun fetchVisitorData(): String? {
+        YtmNetwork.requireCatalog()
         val body = client.get("https://www.youtube.com/sw.js_data") {
             header("User-Agent", WEB_USER_AGENT)
         }.bodyAsText()
@@ -363,6 +365,7 @@ object Innertube {
      * [SessionScope.dataSyncId] — see that field.
      */
     suspend fun ensureSessionScope() {
+        if (YtmNetwork.isCatalogDisabled()) return
         val session = cookie ?: return
         if (scope != null) return
         scopeLock.withLock {
@@ -412,6 +415,7 @@ object Innertube {
      * which is the same as not having asked.
      */
     private suspend fun fetchSessionScope(session: String): SessionScope? {
+        YtmNetwork.requireCatalog()
         val html = client.get("$MUSIC_ORIGIN/") {
             header("User-Agent", WEB_USER_AGENT)
             header("Accept-Language", acceptLanguageHeader)
@@ -574,6 +578,7 @@ object Innertube {
      * rather than being handed to the JSON reader as-is.
      */
     suspend fun accountSwitcher(): JsonObject {
+        YtmNetwork.requireCatalog()
         requireSession()
         ensureSessionScope()
         val session = scope
@@ -713,6 +718,7 @@ object Innertube {
      * timestamp one revision old, it does not.
      */
     suspend fun playbackTracking(videoId: String, signatureTimestamp: Int?): PlaybackTracking? {
+        if (YtmNetwork.isPlaybackDisabled()) return null
         if (cookie == null) return null
         ensureSessionScope()
         val response = postMusic("player") {
@@ -801,6 +807,7 @@ object Innertube {
      * `ver`, `c` and `cver`, so unlike the others it is sent as-is.
      */
     suspend fun pingAtr(baseUrl: String, cpn: String): Int {
+        if (YtmNetwork.isPlaybackDisabled()) return -1
         // Playback can outlive the Activity that restored the session. Ensure
         // the selected profile's headers exist before this first history ping.
         if (cookie != null) ensureSessionScope()
@@ -817,6 +824,7 @@ object Innertube {
         cpn: String,
         extras: HttpRequestBuilder.() -> Unit,
     ): Int {
+        if (YtmNetwork.isPlaybackDisabled()) return -1
         if (cookie != null) ensureSessionScope()
         val session = scope
         return client.get(baseUrl) {
@@ -1119,6 +1127,7 @@ object Innertube {
         region: String? = currentRegion,
         bodyExtras: JsonObjectBuilder.() -> Unit,
     ): JsonObject {
+        YtmNetwork.requireCatalog()
         // This is the common authenticated request path: Home, Library,
         // likes, playlists, account menus and all their continuations pass
         // through it. Waiting here makes restoration process-wide rather than
@@ -1198,6 +1207,7 @@ object Innertube {
         region: String? = currentRegion,
         bodyExtras: JsonObjectBuilder.() -> Unit,
     ): JsonObject {
+        YtmNetwork.requireCatalog()
         val clientVersion = webRemixVersion
         return withRetry {
             client.post("$MUSIC_BASE/$endpoint") {

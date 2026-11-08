@@ -5,8 +5,11 @@ import androidx.media3.common.audio.AudioProcessor
 import com.music.bitchord.playback.EqLayout
 import com.music.bitchord.playback.EqualizerPreset
 import com.music.bitchord.playback.EqualizerProcessor
+import com.music.bitchord.playback.ParametricBand
+import com.music.bitchord.playback.ParametricLayout
 import com.music.bitchord.playback.PeakLimiter
 import com.music.bitchord.playback.manualCurve
+import com.music.bitchord.playback.parametricCurve
 import com.music.bitchord.playback.toneCurve
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -217,6 +220,112 @@ class EqualizerProcessorTest {
             val preamp = manualCurve(preset.bands).preampDb
             assertTrue("${preset.name} asked for $preamp dB of make-up", preamp <= 0.001f)
         }
+    }
+
+    // ---- Parametric bank ---------------------------------------------------
+
+    @Test
+    fun `a parametric band lifts its own centre and leaves the rest alone`() {
+        val bands = ParametricLayout.defaults(ParametricLayout.SMALL_BANDS)
+        val index = bands.indexOfFirst { it.frequencyHz == 1_000f }
+        val tuned = bands.toMutableList().also { it[index] = it[index].withGain(BOOST_DB) }
+        val curve = parametricCurve(tuned)
+        val processor = EqualizerProcessor()
+        processor.setTuning(enabled = true, curve = curve, balance = 0f)
+
+        val atCentre = measure(processor, 1_000.0) - curve.preampDb
+        val away = measure(processor, 8_000.0) - curve.preampDb
+        assertEquals("1 kHz band at +$BOOST_DB dB", BOOST_DB.toDouble(), atCentre, TOLERANCE_DB)
+        assertTrue("8 kHz should stay out of it, was $away dB", abs(away) < 1.0)
+    }
+
+    @Test
+    fun `a band's frequency control moves what it lifts`() {
+        val lowCurve = parametricCurve(listOf(ParametricBand(250f, 2f, BOOST_DB)))
+        val highCurve = parametricCurve(listOf(ParametricBand(4_000f, 2f, BOOST_DB)))
+        val low = EqualizerProcessor().also { it.setTuning(true, lowCurve, 0f) }
+        val high = EqualizerProcessor().also { it.setTuning(true, highCurve, 0f) }
+
+        assertEquals(
+            "250 Hz band at its own centre",
+            BOOST_DB.toDouble(),
+            measure(low, 250.0) - lowCurve.preampDb,
+            TOLERANCE_DB,
+        )
+        assertEquals(
+            "4 kHz band at its own centre",
+            BOOST_DB.toDouble(),
+            measure(high, 4_000.0) - highCurve.preampDb,
+            TOLERANCE_DB,
+        )
+        assertTrue(
+            "a 250 Hz band should be gone by 4 kHz",
+            abs(measure(low, 4_000.0) - lowCurve.preampDb) < 1.0,
+        )
+    }
+
+    /** Q is the whole point of a parametric band, so it has to actually narrow. */
+    @Test
+    fun `a narrow band leans on its neighbours less than a wide one`() {
+        fun skirt(q: Float): Double {
+            val curve = parametricCurve(listOf(ParametricBand(1_000f, q, BOOST_DB)))
+            val processor = EqualizerProcessor()
+            processor.setTuning(enabled = true, curve = curve, balance = 0f)
+            return measure(processor, 500.0) - curve.preampDb
+        }
+
+        val wide = skirt(0.7f)
+        val narrow = skirt(8f)
+        assertTrue(
+            "an octave down: wide was $wide dB, narrow was $narrow dB",
+            wide > narrow + 2.0,
+        )
+    }
+
+    /** The bank has more slots than the ten-band grid, and the extras must run. */
+    @Test
+    fun `a band in the top of the nineteen-band bank is not silently dropped`() {
+        val bands = ParametricLayout.defaults(ParametricLayout.MAX_BANDS)
+        val index = bands.lastIndex
+        val centre = bands[index].frequencyHz
+        val tuned = bands.toMutableList().also { it[index] = it[index].withGain(BOOST_DB) }
+        val curve = parametricCurve(tuned)
+        val processor = EqualizerProcessor()
+        processor.setTuning(enabled = true, curve = curve, balance = 0f)
+
+        val gain = measure(processor, centre.toDouble()) - curve.preampDb
+        assertEquals("${centre.toInt()} Hz band at +$BOOST_DB dB", BOOST_DB.toDouble(), gain, 1.0)
+    }
+
+    @Test
+    fun `parametric boost shares headroom with the v19 peak limiter`() {
+        val curve = parametricCurve(listOf(ParametricBand(1_000f, 2f, ParametricLayout.RANGE_DB)))
+        assertEquals(-ParametricLayout.RANGE_DB / 2, curve.preampDb, 0.1f)
+        val processor = EqualizerProcessor()
+        processor.setTuning(enabled = true, curve = curve, balance = 0f)
+        val output = run(processor, stereoTone(1_000.0, amplitude = 24_000.0))
+        val peak = output.maxOf { abs(it.toInt()) }
+        assertTrue("parametric output clipped at $peak", peak <= PeakLimiter.CEILING * 32_768 + 1)
+    }
+
+    @Test
+    fun `the bank's two counts start from the centres they promise`() {
+        for (count in listOf(ParametricLayout.SMALL_BANDS, ParametricLayout.MAX_BANDS)) {
+            val bands = ParametricLayout.defaults(count)
+            assertEquals("$count bands", count, bands.size)
+            assertEquals(
+                "centres should climb",
+                bands.map { it.frequencyHz }.sorted(),
+                bands.map { it.frequencyHz },
+            )
+            assertTrue(
+                "every centre should be audible",
+                bands.all { it.frequencyHz in ParametricLayout.MIN_HZ..ParametricLayout.MAX_HZ },
+            )
+            assertTrue("a fresh bank is flat", bands.all { it.gainDb == 0f })
+        }
+        assertEquals(ParametricLayout.MAX_BANDS, ParametricLayout.sanitizeCount(ParametricLayout.MAX_BANDS))
+        assertEquals(ParametricLayout.SMALL_BANDS, ParametricLayout.sanitizeCount(3))
     }
 
     // ---- Harness -----------------------------------------------------------

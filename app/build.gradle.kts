@@ -52,17 +52,10 @@ val listenTogetherServer: String = (
         ?: System.getenv("LISTEN_TOGETHER_SERVER")
         ?: "https://bitchord-listen-together.onrender.com"
     ).trim().trimEnd('/')
-
-/*
- * The service that checks this app's hardware key attestation and issues addon
- * tokens. See AddonAuth. Overridable for a staging deployment. A fork that
- * points this at its own server gains nothing: addons only trust tokens signed
- * by the official service's key.
- */
-val addonAuthServer: String = (
-    localProps.getProperty("ADDON_AUTH_SERVER")
-        ?: System.getenv("ADDON_AUTH_SERVER")
-        ?: "https://bitchord-auth.kushagrasingh.in"
+val addonCatalogServer: String = (
+    localProps.getProperty("ADDON_CATALOG_SERVER")
+        ?: System.getenv("ADDON_CATALOG_SERVER")
+        ?: ""
     ).trim().trimEnd('/')
 
 // See the root build.gradle.kts: one version for the phone and its watch app.
@@ -74,7 +67,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.music.bitchord"
+        applicationId = "com.music.bitfuse"
         // 26 keeps reach wide; real-time blur (RenderEffect) kicks in on API 31+,
         // Haze falls back to a translucent scrim below that.
         minSdk = 26
@@ -94,13 +87,13 @@ android {
         )
         buildConfigField(
             "String",
-            "ADDON_AUTH_URL",
-            "\"${addonAuthServer.replace("\\", "\\\\").replace("\"", "\\\"")}\"",
+            "ADDON_CATALOG_SERVER",
+            "\"${addonCatalogServer.replace("\\", "\\\\").replace("\"", "\\\"")}\"",
         )
         // Which release assets are this app's: the phone and TV APKs ship in
         // the same GitHub release, told apart by file name. See
         // AppUpdateChecker.apkAssetUrl.
-        buildConfigField("String", "UPDATE_APK_PREFIX", "\"BitChord-\"")
+        buildConfigField("String", "UPDATE_APK_PREFIX", "\"BitFuse-\"")
     }
 
     splits {
@@ -137,7 +130,7 @@ android {
         }
         create("prod") {
             dimension = "env"
-            // Matches defaultConfig — this is the package already shipped/installed.
+            // Inherits applicationId from defaultConfig (com.music.bitfuse).
         }
     }
 

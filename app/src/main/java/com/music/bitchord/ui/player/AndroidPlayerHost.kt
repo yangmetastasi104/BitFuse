@@ -12,8 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.data.canvas.CanvasArtwork
 import com.music.bitchord.data.canvas.CanvasRepository
@@ -21,18 +24,20 @@ import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.lyrics.LyricLine
 import com.music.bitchord.data.lyrics.LyricsTranslation
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.soundcloud.SoundCloudHome
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.LastPlayerScreen
-import com.music.bitchord.playback.MusicOnlyPlayback
 import com.music.bitchord.playback.AudioOutputStatus
 import com.music.bitchord.playback.AudioRouting
 import com.music.bitchord.playback.audio.bitperfect.BitPerfectOutput
 import com.music.bitchord.playback.audio.bitperfect.DacVolume
 import com.music.bitchord.playback.cast.CastController
+import com.music.bitchord.playback.sing.SingControl
 import com.music.bitchord.ui.components.backdrop.backdrops.SnapshotBackdrop
 import com.music.bitchord.ui.components.backdrop.backdrops.rememberSnapshotBackdrop
 import com.music.bitchord.ui.components.backdrop.backdrops.snapshotBackdropSource
 import com.music.bitchord.ui.components.isGlassSupported
+import com.music.bitchord.ui.components.lightweightLiquidGlass
 import com.music.bitchord.ui.components.menuBackdropFrost
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.CoroutineScope
@@ -70,7 +75,7 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
         override val hideVolumeBar get() = AppSettings.hideVolumeBar
         override val hideStatusBar get() = AppSettings.hideStatusBarInPlayer
         override val lastPlayerScreen get() = AppSettings.lastPlayerScreen
-        override val playerTheme get() = AppSettings.playerTheme
+        override val legacyMeshGradient get() = AppSettings.legacyMeshGradient
         override val lyricsBlur get() = AppSettings.lyricsBlur
         override val lyricsOffsetMs get() = AppSettings.lyricsOffsetMs
         override val lyricsSourceOrder get() = AppSettings.lyricsSourceOrder
@@ -80,7 +85,6 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
         override val prioritizeSpotifyCanvas get() = AppSettings.prioritizeSpotifyCanvas
         override val reduceAnimation get() = AppSettings.reduceAnimation
         override val reduceDynamicBlur get() = AppSettings.reduceDynamicBlur
-        override val disableBlendEffects get() = AppSettings.disableBlendEffects
         override val showNerdStats get() = AppSettings.showNerdStats
         override val showListenTogetherButton get() = AppSettings.showListenTogetherButton
         override val smartAnalysis get() = AppSettings.smartAnalysis
@@ -90,7 +94,6 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
         override val smartMixBlend get() = AppSettings.smartMixBlend
         override val smartMixView get() = AppSettings.smartMixView
         override val smartMixProgress get() = AppSettings.smartMixProgress
-        override val smartMixPreview get() = AppSettings.smartMixPreview
         override val smartTransitionWindow get() = AppSettings.smartTransitionWindow
         override val spotifyCanvasAutoHide get() = AppSettings.spotifyCanvasAutoHide
         override val syncedLyrics get() = AppSettings.syncedLyrics
@@ -99,14 +102,13 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
 
         override fun setLastPlayerScreen(value: LastPlayerScreen) = AppSettings.setLastPlayerScreen(value)
         override fun setLyricsOffsetMs(value: Int) = AppSettings.setLyricsOffsetMs(value)
-        override fun setMixViewOpen(open: Boolean) {
-            AppSettings.mixViewOpen.value = open
-        }
     }
 
-    override fun cachedCanvas(song: Song): CanvasArtwork? = CanvasRepository.cached(song)
+    override fun cachedCanvas(song: Song): CanvasArtwork? =
+        if (SoundCloudHome.isHomeSelected(app)) null else CanvasRepository.cached(song)
 
-    override suspend fun canvasFor(song: Song): CanvasArtwork? = CanvasRepository.canvasFor(song)
+    override suspend fun canvasFor(song: Song): CanvasArtwork? =
+        if (SoundCloudHome.isHomeSelected(app)) null else CanvasRepository.canvasFor(song)
 
     @Composable
     override fun CanvasVideo(spec: CanvasVideoSpec, modifier: Modifier) = AndroidCanvasVideo(spec, modifier)
@@ -116,8 +118,6 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
     @Composable
     override fun MusicVideo(videoId: String, fit: Boolean, onRenderedChanged: (Boolean) -> Unit, modifier: Modifier) =
         AndroidMusicVideo(videoId, fit, onRenderedChanged, modifier)
-
-    override fun showsMusicVideoPicture(videoId: String): Boolean = MusicOnlyPlayback.showsPicture(videoId)
 
     override val musicVideoAspect: StateFlow<Float> get() = MusicVideoEngine.aspect
 
@@ -178,6 +178,21 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
             AudioOutputStatus.current.value.toOutputFormat(BitPerfectOutput.status.value),
         )
     }
+
+    override val singSupported: Boolean get() = true
+    override val singEnabled: StateFlow<Boolean> get() = SingControl.enabled
+    override val singLevel: StateFlow<Float> get() = SingControl.vocalLevel
+    override fun toggleSing() = SingControl.setEnabled(!SingControl.enabled.value)
+    override fun setSingLevel(value: Float) = SingControl.setVocalLevel(value)
+    override val singFaderGlass: Modifier
+        get() = Modifier.composed {
+            val shape = RoundedCornerShape(24.dp)
+            Modifier.lightweightLiquidGlass(
+                shape = shape,
+                fallbackColor = Color.Transparent,
+                surfaceOpacity = 0.06f,
+            )
+        }
 
     override val party: StateFlow<PartyUi> by lazy {
         ListenTogether.state

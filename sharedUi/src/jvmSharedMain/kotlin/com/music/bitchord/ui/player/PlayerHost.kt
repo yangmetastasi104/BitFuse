@@ -11,7 +11,6 @@ import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.settings.AudioQuality
 import com.music.bitchord.data.settings.LastPlayerScreen
-import com.music.bitchord.data.settings.PlayerTheme
 import com.music.bitchord.data.settings.SmartAnalysis
 import com.music.bitchord.data.settings.MixBlend
 import com.music.bitchord.data.settings.MixTransitionView
@@ -58,9 +57,6 @@ interface PlayerHost {
     @Composable
     fun MusicVideo(videoId: String, fit: Boolean, onRenderedChanged: (Boolean) -> Unit, modifier: Modifier) = Unit
 
-    /** Whether [videoId] shows its picture, rather than playing as audio by the listener's choice. */
-    fun showsMusicVideoPicture(videoId: String): Boolean = true
-
     /** The playing music video's width over its height. */
     val musicVideoAspect: StateFlow<Float> get() = DefaultVideoAspect
 
@@ -95,6 +91,24 @@ interface PlayerHost {
 
     /** The negotiated output format, as the pipeline row and the hi-res shine read it. */
     val outputFormat: StateFlow<OutputFormatUi>
+
+    /** Whether this platform has the real-time vocal-separation control. */
+    val singSupported: Boolean get() = false
+
+    /** Current vocal-separation switch; absent platforms use [NoSing]. */
+    val singEnabled: StateFlow<Boolean> get() = NoSing
+
+    /** Current isolated-vocal amount, from accompaniment-only to full vocal. */
+    val singLevel: StateFlow<Float> get() = NoSingLevel
+
+    /** Toggle vocal separation on the active playback route. */
+    fun toggleSing() = Unit
+
+    /** Set the isolated-vocal amount, 0..1. */
+    fun setSingLevel(value: Float) = Unit
+
+    /** Platform glass treatment for the floating Lyrics Sing fader. */
+    val singFaderGlass: Modifier get() = Modifier
 
     /** The Listen Together party this device is in, as the player draws it. */
     val party: StateFlow<PartyUi>
@@ -187,8 +201,7 @@ internal fun videoQualityLabel(height: Int): String = when {
 
 /** Whether [song]'s picture can be shown here — a music video, on a platform that plays one. */
 internal fun showsMusicVideo(song: Song): Boolean =
-    song.isVideo && PlayerPlatform.host.musicVideoSupported &&
-        PlayerPlatform.host.showsMusicVideoPicture(song.videoId)
+    song.isVideo && PlayerPlatform.host.musicVideoSupported
 
 /** @see PlayerHost.MusicVideo */
 @Composable
@@ -200,6 +213,8 @@ internal fun MusicVideoSurface(
 ) = PlayerPlatform.host.MusicVideo(videoId, fit, onRenderedChanged, modifier)
 
 private val NoWatch = MutableStateFlow(WatchOutputUi())
+private val NoSing = MutableStateFlow(false)
+private val NoSingLevel = MutableStateFlow(1f)
 
 /** What the output drawer needs to draw the watch's row. */
 data class WatchOutputUi(
@@ -246,7 +261,7 @@ interface PlayerSettingsSource {
     /** Hide the device status bar while the player is up. Always false where there is none. */
     val hideStatusBar: StateFlow<Boolean>
     val lastPlayerScreen: StateFlow<LastPlayerScreen>
-    val playerTheme: StateFlow<PlayerTheme>
+    val legacyMeshGradient: StateFlow<Boolean>
     val lyricsBlur: StateFlow<Boolean>
     val lyricsOffsetMs: StateFlow<Int>
     val lyricsSourceOrder: StateFlow<List<LyricsSource>>
@@ -257,8 +272,6 @@ interface PlayerSettingsSource {
     val prioritizeSpotifyCanvas: StateFlow<Boolean>
     val reduceAnimation: StateFlow<Boolean>
     val reduceDynamicBlur: StateFlow<Boolean>
-    /** Turns [LocalPlayerChrome] off: glyphs and text over the artwork in plain white. */
-    val disableBlendEffects: StateFlow<Boolean>
     val showNerdStats: StateFlow<Boolean>
     /** Whether the output / Listen Together pill sits under the transport. */
     val showListenTogetherButton: StateFlow<Boolean>
@@ -278,8 +291,6 @@ interface PlayerSettingsSource {
     val smartMixView: StateFlow<MixTransitionView?>
     /** Progress through [smartMixView]'s blend, 0..1. */
     val smartMixProgress: StateFlow<Float>
-    /** The next transition as planned, while the mix popup is open between blends; null otherwise. */
-    val smartMixPreview: StateFlow<MixTransitionView?>
     val smartTransitionWindow: StateFlow<TransitionWindow?>
     val spotifyCanvasAutoHide: StateFlow<Boolean>
     val syncedLyrics: StateFlow<Boolean>
@@ -288,8 +299,6 @@ interface PlayerSettingsSource {
 
     fun setLastPlayerScreen(value: LastPlayerScreen)
     fun setLyricsOffsetMs(value: Int)
-    /** Whether the mix popup is up, so the host lays out [smartMixPreview] for it. */
-    fun setMixViewOpen(open: Boolean)
 }
 
 /** The player's name for the installed host's settings, read where AppSettings used to be. */
@@ -415,11 +424,8 @@ fun CanvasArtworkPlayer(
     onRenderedChanged: (Boolean) -> Unit = {},
     onFrameCaptured: (ImageBitmap) -> Unit = {},
     refreshFrameEveryMs: Long? = null,
-    /**
-     * 0 for no frames at all, which saves a main-thread readback on each
-     * fade-in: only a caller that takes [onFrameCaptured] asks for a size.
-     */
-    frameCapturePx: Int = 0,
+    /** 0 for no frames at all, which saves a main-thread readback on each fade-in. */
+    frameCapturePx: Int = CANVAS_FRAME_CAPTURE_PX,
     onCoverChanged: (Float) -> Unit = {},
     bottomFade: Float = 0f,
     bottomFadeEndPx: Float? = null,

@@ -35,8 +35,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.ui.components.LocalAppBackdrop
 import com.music.bitchord.ui.components.backdrop.Backdrop
 import com.music.bitchord.ui.components.backdrop.backdrops.LayerBackdrop
@@ -516,10 +514,6 @@ internal fun FlatSelectionPill(
  * the first things shed on landing, and refraction that eases out behind them.
  * At the end of that it is drawing the bar, the fill and the tabs with no lens,
  * which is exactly what [FlatSelectionPill] under the tabs draws.
- *
- * Under [AppSettings.glassPerformance] it makes the same moves with no lens. The
- * fill stays on throughout, because with nothing bending behind it, a clear pill
- * would be a rim around nothing.
  */
 @Composable
 internal fun GlassSelectionPill(
@@ -531,11 +525,9 @@ internal fun GlassSelectionPill(
 ) {
     val page = LocalAppBackdrop.current
     val shape = remember { RoundedCornerShape(percent = 50) }
-    val glassPerformance by AppSettings.glassPerformance.collectAsStateWithLifecycle()
-    val backdrop = remember(page, barGlass, tabRow, fillColor, glassPerformance) {
+    val backdrop = remember(page, barGlass, tabRow, fillColor) {
         SelectionPillBackdrop(page, barGlass, tabRow) {
-            if (glassPerformance) fillColor
-            else fillColor.copy(alpha = fillColor.alpha * (1f - motion.material))
+            fillColor.copy(alpha = fillColor.alpha * (1f - motion.material))
         }
     }
     Box(
@@ -543,7 +535,7 @@ internal fun GlassSelectionPill(
             backdrop = backdrop,
             shape = { shape },
             effects = {
-                if (!glassPerformance && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     lens(
                         refractionHeight = LENS_HEIGHT.toPx() * motion.glassPresence,
                         refractionAmount = LENS_AMOUNT.toPx() * motion.material,

@@ -11,6 +11,30 @@ gradle-app.setting
 # Local configuration file (SDK path, etc.)
 local.properties
 
+# Local environment variables and deployment credentials. Keep checked-in
+# templates such as .env.example; never add a real env file to the repository.
+.env
+.env.*
+!.env.example
+!.env.*.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.wrangler/
+credentials.json
+service-account*.json
+google-services.json
+
+# Private keys and certificates used only for local signing/development.
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Cloudflare local secrets and generated state
+/backend/addon-catalog/.dev.vars
+/backend/addon-catalog/.wrangler/
+
 # Kotlin
 .kotlin/
 
@@ -43,6 +67,9 @@ keystore.properties
 # AI agent configuration
 AGENTS.md
 /output/
+
+# Local release APKs (large binaries; GitHub rejects files >100MB). Rebuild with :app:assembleProdRelease
+apk/
 
 # Built packages — release APKs/bundles are handed out, never committed
 *.apk

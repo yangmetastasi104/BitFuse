@@ -19,7 +19,8 @@ import kotlin.math.sqrt
 import kotlin.math.tan
 
 /**
- * 10-band parametric equaliser, tone controls, pre-amp and left/right balance.
+ * 10-band equaliser, a 10/19-band parametric bank, tone controls, pre-amp and
+ * left/right balance.
  *
  * ## The layout
  *
@@ -27,6 +28,12 @@ import kotlin.math.tan
  * at 60 Hz and 14 kHz); the eight between them are peaking bells. The tone
  * controls (Bass / Treble) share the two shelf sections rather than sitting in
  * series with them, so a curve that touches both adds the two gains together.
+ *
+ * Slots [EqLayout.SLOTS] onwards are the parametric bank: always bells, and
+ * always present, but taking their centre from the curve instead of from the
+ * layout. The two families share one cascade for the reason [EqLayout] gives —
+ * the running filters never change shape, so a band dragged from 200 Hz to 5 kHz
+ * is a coefficient update rather than a rebuilt chain.
  *
  * Balance is an output trim rather than an extra section, and does not run at
  * all for mono files — see [onConfigure].
@@ -71,21 +78,30 @@ class EqualizerProcessor : BaseAudioProcessor() {
     private var channelCount = 0
     private var sampleRate = 0
 
-    private val currentGainDb = FloatArray(EqLayout.SLOTS)
-    private val currentQ = FloatArray(EqLayout.SLOTS) { 0.707f }
+    private val currentGainDb = FloatArray(EqLayout.ALL_SLOTS)
+    private val currentQ = FloatArray(EqLayout.ALL_SLOTS) { 0.707f }
+
+    /**
+     * Where each slot sits right now. Fixed slots never move; the parametric
+     * bank glides its centre alongside its gain, because a band being dragged
+     * across the spectrum is a frequency sweep, not a new filter.
+     */
+    private val currentHz = FloatArray(EqLayout.ALL_SLOTS) { slot ->
+        if (EqLayout.isFixed(slot)) EqLayout.slots[slot].frequencyHz else 1_000f
+    }
     private var currentPreampDb = 0f
     private var currentBalance = 0f
 
-    private val coeffA1 = FloatArray(EqLayout.SLOTS)
-    private val coeffA2 = FloatArray(EqLayout.SLOTS)
-    private val coeffA3 = FloatArray(EqLayout.SLOTS)
-    private val mixInput = FloatArray(EqLayout.SLOTS)
-    private val mixBand = FloatArray(EqLayout.SLOTS)
-    private val mixLow = FloatArray(EqLayout.SLOTS)
+    private val coeffA1 = FloatArray(EqLayout.ALL_SLOTS)
+    private val coeffA2 = FloatArray(EqLayout.ALL_SLOTS)
+    private val coeffA3 = FloatArray(EqLayout.ALL_SLOTS)
+    private val mixInput = FloatArray(EqLayout.ALL_SLOTS)
+    private val mixBand = FloatArray(EqLayout.ALL_SLOTS)
+    private val mixLow = FloatArray(EqLayout.ALL_SLOTS)
 
     /** Which sections are worth running this sub-block, and how many. */
-    private val activeSlots = IntArray(EqLayout.SLOTS)
-    private val running = BooleanArray(EqLayout.SLOTS)
+    private val activeSlots = IntArray(EqLayout.ALL_SLOTS)
+    private val running = BooleanArray(EqLayout.ALL_SLOTS)
 
     /** Two integrator states per section, per channel. */
     private var state = FloatArray(0)
@@ -128,7 +144,7 @@ class EqualizerProcessor : BaseAudioProcessor() {
     fun configure(sampleRate: Int, channelCount: Int) {
         this.sampleRate = sampleRate
         this.channelCount = channelCount
-        val requiredSize = channelCount * EqLayout.SLOTS * 2
+        val requiredSize = channelCount * EqLayout.ALL_SLOTS * 2
         if (state.size != requiredSize) {
             state = FloatArray(requiredSize)
         }
@@ -271,14 +287,21 @@ class EqualizerProcessor : BaseAudioProcessor() {
         val tuning = target
         tuning.curve.gainsDb.copyInto(currentGainDb)
         tuning.curve.qs.copyInto(currentQ)
+        tuning.curve.freqsHz.copyInto(currentHz)
         currentPreampDb = tuning.curve.preampDb
         currentBalance = tuning.balance
     }
 
     private fun glideTowards(tuning: Tuning) {
-        for (slot in 0 until EqLayout.SLOTS) {
+        for (slot in 0 until EqLayout.ALL_SLOTS) {
             currentGainDb[slot] = linearGlide(currentGainDb[slot], tuning.curve.gainsDb[slot])
             currentQ[slot] = geometricGlide(currentQ[slot], tuning.curve.qs[slot])
+            // Only the parametric bank owns its centre: a fixed slot drifting
+            // away from the layout would stop being the filter the response
+            // walk in [EqCurve] priced the pre-amp for.
+            if (!EqLayout.isFixed(slot)) {
+                currentHz[slot] = geometricGlide(currentHz[slot], tuning.curve.freqsHz[slot])
+            }
         }
         currentPreampDb = linearGlide(currentPreampDb, tuning.curve.preampDb)
         currentBalance = linearGlide(currentBalance, tuning.balance)
@@ -301,8 +324,13 @@ class EqualizerProcessor : BaseAudioProcessor() {
     private fun isSettled(tuning: Tuning): Boolean {
         if (abs(currentBalance - tuning.balance) >= SETTLED_BALANCE) return false
         if (abs(currentPreampDb - tuning.curve.preampDb) >= SETTLED_DB) return false
-        for (slot in 0 until EqLayout.SLOTS) {
+        for (slot in 0 until EqLayout.ALL_SLOTS) {
             if (abs(currentGainDb[slot] - tuning.curve.gainsDb[slot]) >= SETTLED_DB) return false
+            if (!EqLayout.isFixed(slot) &&
+                abs(currentHz[slot] - tuning.curve.freqsHz[slot]) > SETTLED_HZ
+            ) {
+                return false
+            }
         }
         return true
     }
@@ -311,7 +339,7 @@ class EqualizerProcessor : BaseAudioProcessor() {
 
     private fun prepareSections(): Int {
         var active = 0
-        for (slot in 0 until EqLayout.SLOTS) {
+        for (slot in 0 until EqLayout.ALL_SLOTS) {
             if (abs(currentGainDb[slot]) >= SETTLED_DB) {
                 updateCoefficients(slot)
                 activeSlots[active++] = slot
@@ -326,13 +354,13 @@ class EqualizerProcessor : BaseAudioProcessor() {
 
     private fun updateCoefficients(slot: Int) {
         if (sampleRate <= 0) return
-        val spec = EqLayout.slots[slot]
+        val kind = EqLayout.kindOf(slot)
         val a = 10f.pow(currentGainDb[slot] / 40f)
         val q = currentQ[slot].coerceAtLeast(MIN_Q)
-        val base = tan(Math.PI * usableFrequency(spec.frequencyHz) / sampleRate).toFloat()
+        val base = tan(Math.PI * usableFrequency(currentHz[slot]) / sampleRate).toFloat()
         val g: Float
         val k: Float
-        when (spec.kind) {
+        when (kind) {
             FilterKind.BELL -> {
                 g = base
                 k = 1f / (q * a)
@@ -377,7 +405,7 @@ class EqualizerProcessor : BaseAudioProcessor() {
     // ---- Filter ------------------------------------------------------------
 
     private fun section(slot: Int, channel: Int, input: Float): Float {
-        val i = (channel * EqLayout.SLOTS + slot) * 2
+        val i = (channel * EqLayout.ALL_SLOTS + slot) * 2
         val ic1 = state[i]
         val ic2 = state[i + 1]
         val v3 = input - ic2
@@ -390,7 +418,7 @@ class EqualizerProcessor : BaseAudioProcessor() {
 
     private fun clearState(slot: Int) {
         for (channel in 0 until channelCount) {
-            val i = (channel * EqLayout.SLOTS + slot) * 2
+            val i = (channel * EqLayout.ALL_SLOTS + slot) * 2
             state[i] = 0f
             state[i + 1] = 0f
         }
@@ -400,7 +428,7 @@ class EqualizerProcessor : BaseAudioProcessor() {
         for (index in 0 until active) {
             val slot = activeSlots[index]
             for (channel in 0 until channelCount) {
-                val i = (channel * EqLayout.SLOTS + slot) * 2
+                val i = (channel * EqLayout.ALL_SLOTS + slot) * 2
                 if (abs(state[i]) < DENORMAL_FLOOR) state[i] = 0f
                 if (abs(state[i + 1]) < DENORMAL_FLOOR) state[i + 1] = 0f
             }
@@ -420,6 +448,9 @@ class EqualizerProcessor : BaseAudioProcessor() {
 
         /** Below this a band is doing nothing anyone can hear, so it counts as flat. */
         private const val SETTLED_DB = 0.01f
+
+        /** Settled is also about where a band sits, for the bank that can move. */
+        private const val SETTLED_HZ = 0.5f
 
         /** Same idea for the balance trim, where the scale is -1 to 1. */
         private const val SETTLED_BALANCE = 0.0005f

@@ -127,7 +127,7 @@ fun SpotifyLoginScreen(
                         // Hide before handing over, so the web player this
                         // landed on doesn't flash up as the overlay tears down.
                         view.visibility = View.GONE
-                        onConnected(token)
+                        onConnected(raw)
                     }
                 }
                 webView = this

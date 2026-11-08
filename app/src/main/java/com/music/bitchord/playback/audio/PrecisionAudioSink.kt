@@ -12,6 +12,9 @@ import androidx.media3.exoplayer.audio.ForwardingAudioSink
 import com.music.bitchord.BuildConfig
 import com.music.bitchord.playback.AudioOutputStatus
 import com.music.bitchord.playback.loopmix.LoopMixPort
+import com.music.bitchord.playback.sing.MnnSingProcessor
+import com.music.bitchord.playback.sing.SingControl
+import java.util.ArrayDeque
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -64,6 +67,7 @@ class PrecisionAudioSink(
     val dspChain: DspChain,
     private val enableFloatOutput: Boolean,
     private val preferredOutputEncodingProvider: ((Format) -> PcmEncoding?)? = null,
+    private val sing: MnnSingProcessor? = null,
     /**
      * Whether this sink is the one the listener can currently hear.
      *
@@ -94,6 +98,15 @@ class PrecisionAudioSink(
         private set
 
     private var processCounter: Long = 0L
+    private data class SingSegment(
+        val presentationTimeUs: Long,
+        val accessUnitCount: Int,
+        var remainingFrames: Int,
+        var emittedFrames: Long = 0L,
+    )
+    private val singSegments = ArrayDeque<SingSegment>()
+    private var singEndSignaled = false
+    private var singBranchLogged = false
 
     /** Sample rate of the configured format, for timestamping split sub-blocks. */
     private var configuredSampleRate: Int = 0
@@ -211,6 +224,9 @@ class PrecisionAudioSink(
                     inputPcmEncoding = encoding
                     targetOutputEncoding = targetEncoding
                     isPrecisionActive = true
+                    configureSingForStream(sampleRate, channelCount)
+                    Log.i(TAG, "configured PCM route: sr=$sampleRate ch=$channelCount input=${encoding.name} out=${targetEncoding.name} sing=${SingControl.enabled.value && isAudible()}")
+                    configureSingForStream(sampleRate, channelCount)
                     publishLoopFormat(sampleRate, channelCount, true)
                     publishTelemetry(encoding, targetEncoding)
                     logConfig(
@@ -237,6 +253,9 @@ class PrecisionAudioSink(
                             inputPcmEncoding = encoding
                             targetOutputEncoding = PcmEncoding.PCM_16BIT
                             isPrecisionActive = true
+                            configureSingForStream(sampleRate, channelCount)
+                            Log.i(TAG, "configured PCM16 fallback: sr=$sampleRate ch=$channelCount sing=${SingControl.enabled.value && isAudible()}")
+                            configureSingForStream(sampleRate, channelCount)
                             publishLoopFormat(sampleRate, channelCount, true)
                             publishTelemetry(encoding, PcmEncoding.PCM_16BIT)
                             logConfig(
@@ -334,6 +353,24 @@ class PrecisionAudioSink(
                 // Delegate still busy; backpressure to renderer
                 return false
             }
+        }
+
+        // Sing is staged ahead of the AudioTrack until MNN has generated a
+        // matching vocal stem. This sink can retain decoder PTS/access-unit
+        // metadata, unlike the old in-place FloatAudioProcessor hook, so the
+        // several-second MDX pre-roll does not pair a late stem with the wrong
+        // part of the song.
+        if ((SingControl.enabled.value || singSegments.isNotEmpty()) && isAudible() && sing != null) {
+            if (!singBranchLogged) {
+                singBranchLogged = true
+                Log.i(TAG, "Sing sink branch entered: precision=$isPrecisionActive sr=$configuredSampleRate encoding=${inEncoding.name}")
+                SingControl.setStatus("MNN: percorso PCM Media3 attivo")
+            }
+            if (presentationTimeUs != timestampedInputTimeUs) {
+                timestampedInputTimeUs = presentationTimeUs
+                framesEmittedForInput = 0L
+            }
+            return handleSingBuffer(inputBuffer, presentationTimeUs, encodedAccessUnitCount, inEncoding)
         }
 
         // 2. Output buffer is drained; process available input in blocks.
@@ -463,6 +500,116 @@ class PrecisionAudioSink(
         }
 
         return !inputBuffer.hasRemaining() && !outputByteBuffer.hasRemaining()
+    }
+
+    /**
+     * Feed decoded PCM to MDX, but do not submit audio to AudioTrack until the
+     * matching stem exists. The queue stores only block metadata; the actual
+     * original signal and separated stem live in AiStemSeparationEngine's
+     * bounded PCM/stem rings.
+     */
+    private fun handleSingBuffer(
+        inputBuffer: ByteBuffer,
+        presentationTimeUs: Long,
+        encodedAccessUnitCount: Int,
+        inputEncoding: PcmEncoding,
+    ): Boolean {
+        val engine = sing ?: return false
+        if (!engine.isReady && !engine.configure(configuredSampleRate, audioBlock.channelCount)) {
+            SingControl.setStatus(engine.status)
+            SingControl.setEnabled(false)
+            return false
+        }
+        val bytesPerFrame = inputEncoding.bytesPerFrame(audioBlock.channelCount)
+        if (bytesPerFrame <= 0) return false
+
+        while (true) {
+            // Prior output was already drained at the top of [handleBuffer].
+            // If MNN has a stem for the head segment, emit exactly those frames
+            // with the head's original media timestamp.
+            val segment = singSegments.peekFirst()
+            if (segment != null) {
+                val requested = minOf(segment.remainingFrames, audioBlock.capacityFrames)
+                val rendered = if (SingControl.enabled.value) {
+                    engine.renderSing(requested, SingControl.vocalLevel.value)
+                } else {
+                    engine.renderOriginal(requested)
+                }
+                if (rendered > 0) {
+                    val stemBlock = engine.copyToOutput()
+                    System.arraycopy(stemBlock.samples, 0, audioBlock.samples, 0, rendered * 2)
+                    audioBlock.setFrameCount(rendered)
+                    dspChain.process(audioBlock)
+
+                    outputByteBuffer.clear()
+                    PcmBoundary.encode(audioBlock, targetOutputEncoding ?: inputEncoding, outputByteBuffer)
+                    outputByteBuffer.flip()
+
+                    val blockTimeUs = advanceTimestamp(segment.presentationTimeUs, segment.emittedFrames)
+                    val blockAccessUnits = if (segment.emittedFrames == 0L) segment.accessUnitCount else 0
+                    pendingPresentationTimeUs = if (blockTimeUs == C.TIME_UNSET) blockTimeUs else blockTimeUs + delegateOffsetUs
+                    pendingAccessUnitCount = blockAccessUnits
+                    segment.emittedFrames += rendered
+                    segment.remainingFrames -= rendered
+                    if (segment.remainingFrames <= 0) singSegments.removeFirst()
+                    if (blockTimeUs != C.TIME_UNSET && configuredSampleRate > 0) {
+                        processedEndUs = blockTimeUs + Util.sampleCountToDurationUs(rendered.toLong(), configuredSampleRate)
+                    }
+
+                    val accepted = delegate.handleBuffer(outputByteBuffer, pendingPresentationTimeUs, blockAccessUnits)
+                    if (!accepted || outputByteBuffer.hasRemaining()) return false
+                    continue
+                }
+            }
+
+            // All currently available stems have been emitted. Consume the
+            // next decoder block into the engine and retain its timeline entry.
+            if (!SingControl.enabled.value) {
+                // A toggle can race the service's renderer handoff. Keep the
+                // accepted pre-roll, but finish it as untouched PCM before the
+                // new renderer takes over.
+                if (singSegments.isNotEmpty()) return false
+                engine.deactivateIfDrained()
+                return false
+            }
+
+            val availableInputFrames = inputBuffer.remaining() / bytesPerFrame
+            if (availableInputFrames <= 0) return true
+            val frames = minOf(availableInputFrames, audioBlock.capacityFrames)
+            if (!engine.canAcceptInput(frames)) {
+                // Backpressure the renderer without dropping or reordering PCM;
+                // the worker keeps running and the same buffer is retried.
+                return false
+            }
+            val blockTimeUs = advanceTimestamp(presentationTimeUs, framesEmittedForInput)
+            val units = if (framesEmittedForInput == 0L) encodedAccessUnitCount else 0
+            val decoded = PcmBoundary.decode(inputBuffer, inputEncoding, audioBlock, frames)
+            if (decoded <= 0) return true
+            if (!engine.feed(audioBlock)) {
+                SingControl.setStatus("MNN non ha accettato il blocco PCM")
+                SingControl.setEnabled(false)
+                return false
+            }
+            singSegments.addLast(SingSegment(blockTimeUs, units, decoded))
+            framesEmittedForInput += decoded
+            if (singSegments.size == 1 || singSegments.size % 100 == 0) {
+                Log.i(TAG, "Sing pre-roll: buffered ${singSegments.size} PCM segments; MDX stems=${engine.availableStemFrames44k}")
+            }
+        }
+    }
+
+    private fun configureSingForStream(sampleRate: Int, channelCount: Int) {
+        val engine = sing ?: return
+        singSegments.clear()
+        singEndSignaled = false
+        singBranchLogged = false
+        if (SingControl.enabled.value && isAudible()) {
+            engine.resetStream()
+            if (!engine.configure(sampleRate, channelCount)) {
+                SingControl.setStatus(engine.status)
+                SingControl.setEnabled(false)
+            }
+        }
     }
 
     /** [presentationTimeUs] moved on by [frames], or left alone when the rate is unknown. */
@@ -667,6 +814,10 @@ class PrecisionAudioSink(
         pendingAccessUnitCount = 0
         timestampedInputTimeUs = C.TIME_UNSET
         framesEmittedForInput = 0L
+        singSegments.clear()
+        singEndSignaled = false
+        singBranchLogged = false
+        sing?.resetStream()
         if (isPrecisionActive) {
             dspChain.flush()
         }
@@ -686,6 +837,9 @@ class PrecisionAudioSink(
         pendingAccessUnitCount = 0
         timestampedInputTimeUs = C.TIME_UNSET
         framesEmittedForInput = 0L
+        singSegments.clear()
+        singEndSignaled = false
+        sing?.resetStream()
         if (isPrecisionActive) {
             dspChain.reset()
         }
@@ -728,12 +882,27 @@ class PrecisionAudioSink(
 
     override fun playToEndOfStream() {
         if (isPrecisionActive && outputByteBuffer.hasRemaining()) {
-            delegate.handleBuffer(outputByteBuffer, pendingPresentationTimeUs, pendingAccessUnitCount)
+            val accepted = delegate.handleBuffer(outputByteBuffer, pendingPresentationTimeUs, pendingAccessUnitCount)
+            if (!accepted || outputByteBuffer.hasRemaining()) return
+        }
+        if (isPrecisionActive && singSegments.isNotEmpty() && SingControl.enabled.value && isAudible()) {
+            val processor = sing ?: return
+            if (!singEndSignaled) {
+                singEndSignaled = true
+                processor.signalEndOfStream()
+            }
+            val encoding = inputPcmEncoding ?: return
+            handleSingBuffer(ByteBuffer.allocate(0), C.TIME_UNSET, 0, encoding)
+            if (singSegments.isNotEmpty() || outputByteBuffer.hasRemaining() || !processor.isEnded) {
+                processor.awaitWorker()
+                return
+            }
         }
         delegate.playToEndOfStream()
     }
 
     override fun isEnded(): Boolean {
+        if (isPrecisionActive && singSegments.isNotEmpty()) return false
         if (isPrecisionActive && outputByteBuffer.hasRemaining()) {
             return false
         }
@@ -741,6 +910,7 @@ class PrecisionAudioSink(
     }
 
     override fun hasPendingData(): Boolean {
+        if (isPrecisionActive && singSegments.isNotEmpty()) return true
         if (isPrecisionActive && outputByteBuffer.hasRemaining()) {
             return true
         }

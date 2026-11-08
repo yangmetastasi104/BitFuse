@@ -1,7 +1,6 @@
 package com.music.bitchord.data.settings
 
 import com.music.bitchord.data.webdav.update
-import com.music.bitchord.ui.components.VideoThumbnails
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.ConnectivityManager
@@ -13,37 +12,38 @@ import com.music.bitchord.auth.AuthStore
 import com.music.bitchord.data.canvas.SpotifyToken
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.sources.SourceKind
+import com.music.bitchord.data.sources.ProviderMatchOverride
+import com.music.bitchord.data.sources.ProviderMatchOverrides
 import com.music.bitchord.playback.EqLayout
 import com.music.bitchord.playback.EqualizerPreset
+import com.music.bitchord.playback.ParametricBand
+import com.music.bitchord.playback.ParametricLayout
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlin.math.abs
+import kotlin.math.ln
 
 
 /**
  * Whether a stream started under this ceiling may be served by [kind].
  *
  * Asked per stream rather than written into
- * [SourceConfig.enabled][com.music.bitchord.data.sources.SourceConfig.enabled],
- * which is what this used to do — an `applyQualityPreset` call flipped the
- * module and JioSaavn switches the moment a rung was picked. Two things
- * were wrong with that and both were reported together: picking a rung for
- * *mobile data* turned the sources off while sitting on Wi-Fi, and nothing
- * turned them back on when the connection changed, so a Wi-Fi ceiling of
- * Lossless still had no lossless source to reach. A ceiling is a property
- * of the connection in force; the switches on the Sources screen are the
- * user's standing choice. Storing the first in the second lost the second.
+ * [SourceConfig.enabled][com.music.bitchord.data.sources.SourceConfig.enabled].
  *
- * [SourceKind.YOUTUBE] is permitted on every rung: it is what [maxKbps]
- * caps, and it is the only source that can answer at all when the ones
- * above it are skipped.
+ * [SourceKind.YOUTUBE] answers false on every rung here: it is catalog-only
+ * and never serves audio, so the ceiling question does not apply to it (see
+ * [SourceRegistry.activeForPlayback], which excludes it outright). Capped
+ * rungs are honored through the request itself — see
+ * [SourceResolver.requestForNow], which asks sources for a capped transcode
+ * instead of excluding them.
  */
 fun AudioQuality.permits(kind: SourceKind): Boolean = when (this) {
-    AudioQuality.LOSSLESS -> true
-    // No lossless answer is wanted here, and a source that can serve one is
-    // the slow half of the list: an addon fronting several catalogues walks
-    // all of them before it answers, which is seconds spent to land on a
-    // transcode JioSaavn already has at 320.
-    AudioQuality.HIGH -> !kind.canServeLossless
-    AudioQuality.MEDIUM, AudioQuality.LOW -> kind == SourceKind.YOUTUBE
+    // Quality ceilings shape the request a source receives; they must never
+    // remove the user's add-on from playback. YouTube Music stays catalog-only
+    // on every rung, except the explicit video-only last resort.
+    AudioQuality.LOSSLESS,
+    AudioQuality.HIGH,
+    AudioQuality.MEDIUM,
+    AudioQuality.LOW -> kind != SourceKind.YOUTUBE
 }
 
 /**
@@ -137,7 +137,7 @@ enum class AppFont { DEFAULT, LEGACY }
 /**
  * Which of the equaliser's two tabs is driving the sound.
  *
- * One at a time rather than both at once: they are two ways of describing the
+ * One at a time rather than all at once: they are three ways of describing the
  * same curve, and summing them would mean a tone pad sitting at dead centre
  * still quietly altering whatever the sliders said.
  */
@@ -147,6 +147,15 @@ enum class EqualizerMode {
 
     /** Seven sliders and a preset list. */
     MANUAL,
+
+    /**
+     * A bank of 10 or 19 bells, each with its own centre, width and gain.
+     *
+     * The other two tabs fix the frequencies and hand you gains; this one
+     * hands you the filters themselves. Its bands live in the slots after
+     * [EqLayout.SLOTS] and run on their own, flat while another tab is driving.
+     */
+    PARAMETRIC,
 }
 
 /** Stable persisted ordering for each on-device music library. */
@@ -360,7 +369,7 @@ object AppSettings {
      * of its transition — see [DirectSourceGate][com.music.bitchord.playback.DirectSourceGate].
      * Automix analysis is untouched: it keeps reading its own YouTube Opus copy.
      */
-    val directSourceStream = MutableStateFlow(false)
+    val directSourceStream = MutableStateFlow(true)
 
     /**
      * Widens stereo output via [com.music.bitchord.playback.SpatialAudioProcessor],
@@ -408,6 +417,22 @@ object AppSettings {
      */
     val equalizerPreset = MutableStateFlow(EqualizerPreset.FLAT)
 
+    /**
+     * How many bands the parametric tab is holding: 10 or 19.
+     *
+     * Kept apart from [equalizerParametric] so the bank's own length and the
+     * chosen count can never disagree, and so the count survives a restart on
+     * its own even if the band list is ever reset.
+     */
+    val equalizerParametricBands = MutableStateFlow(ParametricLayout.SMALL_BANDS)
+
+    /** The parametric tab's bank, low to high, one entry per selected band. */
+    val equalizerParametric = MutableStateFlow(ParametricLayout.defaults(ParametricLayout.SMALL_BANDS))
+
+    /** Whether the equaliser curve also drives the system audio session, so the
+     *  same EQ curve is heard system-wide rather than only inside BitFuse. */
+    val equalizerSystemWide = MutableStateFlow(false)
+
     val playbackSpeed = MutableStateFlow(1.0f)
     val themeMode = MutableStateFlow(ThemeMode.DARK)
     val appFont = MutableStateFlow(AppFont.DEFAULT)
@@ -437,9 +462,6 @@ object AppSettings {
      */
     val onboardingComplete = MutableStateFlow(false)
 
-    /** Whether the one-time Diwali 2026 greeting has been seen and dismissed. */
-    val diwaliGreetingShown = MutableStateFlow(false)
-
     /** Requests a sustained high-refresh UI. Off keeps Android's automatic policy. */
     val highPerformanceMode = MutableStateFlow(false)
 
@@ -466,45 +488,14 @@ object AppSettings {
     /** Once a song has been suggested or played this session, AutoPlay won't offer it again. */
     val dontRepeatSuggestions = MutableStateFlow(false)
 
-    /** Music videos play as their audio version — see [com.music.bitchord.playback.MusicOnlyPlayback]. */
-    val preferMusicOnly = MutableStateFlow(false)
-
-    /** Home's Recents shelf. */
-    val hideRecents = MutableStateFlow(false)
-
-    /** Music videos come off the Home feed, along with any shelf left with nothing else on it. */
-    val hideHomeVideos = MutableStateFlow(false)
-
-    /** Home's Top Picks for You shelf. */
-    val hideTopPicks = MutableStateFlow(false)
-
-    /** Home's Find Your Mood shelf. Explore's moods are a page the listener opened, so they stay. */
-    val hideHomeMoods = MutableStateFlow(false)
-
-    /** Music videos are square wherever they show — see [com.music.bitchord.ui.components.VideoThumbnails]. */
-    val squareVideoThumbnails = MutableStateFlow(false)
-
     /** Analyzes audio waveform/envelope to align matching playback moment between versions. */
     val smartVersionAlignment = MutableStateFlow(true)
 
     /** Drops haze blur (status bar, mini player, bottom fade, lyrics focus) for a solid-fill look. */
     val reduceDynamicBlur = MutableStateFlow(false)
 
-    /**
-     * Draws the player's glyphs and text, and the dark menus' rows, in plain white
-     * over what is behind them instead of blending the artwork's colour into them.
-     */
-    val disableBlendEffects = MutableStateFlow(false)
-
     /** Real backdrop-sampled glass (blur, lens refraction) on the floating nav bar, Android 12+ only. */
     val liquidGlass = MutableStateFlow(false)
-
-    /**
-     * Frosts the glass instead of refracting it, for phones the lens shader is too
-     * much for: the bar's rim, shadow, tint and motion all stay. A Liquid Glass
-     * option, honoured only while [liquidGlass] is on.
-     */
-    val glassPerformance = MutableStateFlow(false)
 
     /**
      * Blurs what scrolls under the status bar and the top controls, easing out
@@ -585,27 +576,21 @@ object AppSettings {
     val fullBleedArtwork = MutableStateFlow(true)
 
     /**
-     * The album and playlist page's answer to [fullBleedArtwork]: the sleeve
-     * runs edge to edge off the top of the screen and dissolves into the page
-     * colour, instead of sitting framed in the middle. Everything under it —
-     * the page colour, title, credit and buttons — stays as it is. Off by
-     * default, the framed sleeve being the page's own look.
-     */
-    val fullBleedDetailArtwork = MutableStateFlow(false)
-
-    /**
-     * What the main player stands on below the artwork.
+     * Puts v1.5's backdrop back on the player: four quantised blobs drifting
+     * behind the whole screen, rather than the artwork's own colours hung off
+     * the sleeve's bottom edge.
      *
-     * [PlayerTheme.DEFAULT] because that is the look people asked to have back,
-     * and because the alternatives each give something up: see
-     * [ArtworkMesh][com.music.bitchord.ui.player.ArtworkMesh] for what
-     * [PlayerTheme.LEGACY]'s quantiser does to a cover that is nine-tenths black
-     * with a red stripe (a red screen), and
-     * [ArtworkMeshBackdrop][com.music.bitchord.ui.player.ArtworkMeshBackdrop] for
-     * its cost (blobs that drift are a full-screen blur redrawn while they move,
-     * where a mesh is drawn once per track and then composited).
+     * Off by default, because the current backdrop replaced it for two reasons
+     * that have not gone away — see [ArtworkMesh][com.music.bitchord.ui.player.ArtworkMesh]
+     * for the colour one (a cover that is nine-tenths black with a red stripe
+     * comes back from the quantiser as a red screen) and
+     * [ArtworkMeshBackdrop][com.music.bitchord.ui.player.ArtworkMeshBackdrop]
+     * for the cost one (blobs that drift are a full-screen blur redrawn while
+     * they move, where a mesh is drawn once per track and then composited).
+     * Kept as a switch because people asked for the old look back, and neither
+     * reason is one a listener has to agree with.
      */
-    val playerTheme = MutableStateFlow(PlayerTheme.DEFAULT)
+    val legacyMeshGradient = MutableStateFlow(false)
 
     /** Restores the expanded player to the surface the listener left open. */
     val lastPlayerScreen = MutableStateFlow(LastPlayerScreen.MAIN)
@@ -755,11 +740,42 @@ object AppSettings {
     val lastfmPrimaryArtistOnly = MutableStateFlow(false)
     val scrobbleMinDuration = MutableStateFlow(30)
     val scrobbleDelayPercent = MutableStateFlow(0.5f)
-    val scrobbleDelaySeconds = MutableStateFlow(180)
+    val scrobbleDelaySeconds = MutableStateFlow(240)
     val listenBrainzEnabled = MutableStateFlow(false)
     val listenBrainzToken = MutableStateFlow("")
     val listenBrainzPrimaryArtistOnly = MutableStateFlow(false)
+    /**
+     * The live `sp_dc` cookie value, mirrored here from encrypted storage
+     * ([AuthStore][com.music.bitchord.auth.AuthStore]) for readers without a
+     * context. In-memory only — never persisted to these plain prefs.
+     */
     val spotifySpdcToken = MutableStateFlow("")
+    /**
+     * The Spotify `sp_t` personalization cookie, kept in memory for the request
+     * builders. In-memory only, like [spotifySpdcToken].
+     */
+    val spotifySptToken = MutableStateFlow("")
+    /** Complete Spotify cookie header, mirrored from encrypted AuthStore memory. */
+    val spotifyCookieHeader = MutableStateFlow("")
+    /**
+     * Whether a Spotify cookie session is connected. True while a cookie is
+     * stored in [AuthStore][com.music.bitchord.auth.AuthStore].
+     */
+    val spotifyConnected = MutableStateFlow(false)
+    /**
+     * Report local plays of Spotify rows to Spotify history (unofficial).
+     * Feeds "Recently played" and recommendations — never Wrapped, which
+     * counts only streams inside Spotify clients.
+     */
+    val spotifyScrobbleEnabled = MutableStateFlow(true)
+    /** Last successful Spotify library sync epoch-ms, 0 when never synced. */
+    val spotifyLastSyncMs = MutableStateFlow(0L)
+    /** Last Spotify sync failure message, empty when the last sync succeeded. */
+    val spotifyLastSyncError = MutableStateFlow("")
+    /** When true, the first provider error aborts resolution (diagnostics; default off). */
+    val stopOnProviderError = MutableStateFlow(false)
+    /** Per-track playback-source overrides, MetroFuse `audioProviderMatchOverrides` equivalent. */
+    val providerMatchOverrides = MutableStateFlow<Map<String, ProviderMatchOverride>>(emptyMap())
 
     // ── Discord Rich Presence ───────────────────────────────────────────
 
@@ -835,17 +851,6 @@ object AppSettings {
 
     /** How far through [smartMixView]'s blend playback is, 0..1. Read it in draw. */
     val smartMixProgress = MutableStateFlow(0f)
-
-    /**
-     * The *next* Automix transition laid out for the mix popup, as the plan
-     * stands right now — for a popup opened by hand from the player's menu
-     * between blends. Only published while [mixViewOpen], and null whenever
-     * [smartMixView] has a blend to show instead.
-     */
-    val smartMixPreview = MutableStateFlow<MixTransitionView?>(null)
-
-    /** The mix popup is up. Written by the player; tells the crossfade controller someone is looking. */
-    val mixViewOpen = MutableStateFlow(false)
 
     /**
      * True while a version switch is fetching and analysing the other cut
@@ -995,7 +1000,7 @@ object AppSettings {
         loudnessNormalization.value = prefs.getBoolean(KEY_LOUDNESS_NORMALIZATION, true)
         loudnessOffOnSpeaker.value = prefs.getBoolean(KEY_LOUDNESS_OFF_ON_SPEAKER, true)
         dolbyAtmos.value = prefs.getBoolean(KEY_DOLBY_ATMOS, true)
-        directSourceStream.value = prefs.getBoolean(KEY_DIRECT_SOURCE_STREAM, false)
+        directSourceStream.value = prefs.getBoolean(KEY_DIRECT_SOURCE_STREAM, true)
         spatialAudio.value = prefs.getBoolean(KEY_SPATIAL_AUDIO, false)
         equalizerEnabled.value = prefs.getBoolean(KEY_EQ_ENABLED, false)
         equalizerMode.value = runCatching {
@@ -1007,6 +1012,11 @@ object AppSettings {
         equalizerBalance.value = prefs.getFloat(KEY_EQ_BALANCE, 0f).coerceIn(-1f, 1f)
         equalizerBands.value = readEqualizerBands()
         equalizerPreset.value = EqualizerPreset.matching(equalizerBands.value)
+        equalizerParametricBands.value = ParametricLayout.sanitizeCount(
+            prefs.getInt(KEY_EQ_PARAMETRIC_BANDS, ParametricLayout.SMALL_BANDS),
+        )
+        equalizerParametric.value = readEqualizerParametric(equalizerParametricBands.value)
+        equalizerSystemWide.value = prefs.getBoolean(KEY_EQ_SYSTEM_WIDE, false)
         playbackSpeed.value = prefs.getFloat(KEY_SPEED, 1.0f)
         themeMode.value = runCatching {
             ThemeMode.valueOf(prefs.getString(KEY_THEME, null) ?: "DARK")
@@ -1021,7 +1031,6 @@ object AppSettings {
         showListenTogetherButton.value = prefs.getBoolean(KEY_LISTEN_TOGETHER_BUTTON, false)
         reduceAnimation.value = prefs.getBoolean(KEY_REDUCE_ANIMATION, false)
         onboardingComplete.value = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
-        diwaliGreetingShown.value = prefs.getBoolean(KEY_DIWALI_GREETING_SHOWN, false)
         highPerformanceMode.value = prefs.getBoolean(KEY_HIGH_PERFORMANCE_MODE, false)
         performanceRefreshRate.value = normalizePerformanceRefreshRate(
             prefs.getInt(KEY_PERFORMANCE_REFRESH_RATE, DEFAULT_PERFORMANCE_REFRESH_RATE),
@@ -1033,18 +1042,9 @@ object AppSettings {
         showQueueHistory.value = prefs.getBoolean(KEY_SHOW_QUEUE_HISTORY, false)
         swipeToPlayNext.value = prefs.getBoolean(KEY_SWIPE_TO_PLAY_NEXT, false)
         dontRepeatSuggestions.value = prefs.getBoolean(KEY_DONT_REPEAT_SUGGESTIONS, false)
-        preferMusicOnly.value = prefs.getBoolean(KEY_PREFER_MUSIC_ONLY, false)
-        hideRecents.value = prefs.getBoolean(KEY_HIDE_RECENTS, false)
-        hideHomeVideos.value = prefs.getBoolean(KEY_HIDE_HOME_VIDEOS, false)
-        hideTopPicks.value = prefs.getBoolean(KEY_HIDE_TOP_PICKS, false)
-        hideHomeMoods.value = prefs.getBoolean(KEY_HIDE_HOME_MOODS, false)
-        squareVideoThumbnails.value = prefs.getBoolean(KEY_SQUARE_VIDEO_THUMBNAILS, false)
-        VideoThumbnails.square = squareVideoThumbnails.value
         smartVersionAlignment.value = prefs.getBoolean(KEY_SMART_VERSION_ALIGNMENT, true)
         reduceDynamicBlur.value = prefs.getBoolean(KEY_REDUCE_BLUR, false)
-        disableBlendEffects.value = prefs.getBoolean(KEY_DISABLE_BLEND_EFFECTS, false)
         liquidGlass.value = prefs.getBoolean(KEY_LIQUID_GLASS, false)
-        glassPerformance.value = prefs.getBoolean(KEY_GLASS_PERFORMANCE, false)
         progressiveBlur.value = prefs.getBoolean(KEY_PROGRESSIVE_BLUR, false)
         lyricsBlur.value = prefs.getBoolean(KEY_LYRICS_BLUR, true)
         lyricsOffsetMs.value = prefs.getInt(KEY_LYRICS_OFFSET_MS, 0)
@@ -1061,13 +1061,7 @@ object AppSettings {
         signatureApiEnabled.value = prefs.getBoolean(KEY_SIGNATURE_API_ENABLED, false)
         signatureApiUrl.value = normalizeSignatureApiUrl(prefs.getString(KEY_SIGNATURE_API_URL, "").orEmpty())
         fullBleedArtwork.value = prefs.getBoolean(KEY_FULL_BLEED_ARTWORK, true)
-        fullBleedDetailArtwork.value = prefs.getBoolean(KEY_FULL_BLEED_DETAIL_ARTWORK, false)
-        // The old legacy mesh switch answers until a theme has been picked.
-        playerTheme.value = runCatching {
-            PlayerTheme.valueOf(prefs.getString(KEY_PLAYER_THEME, null).orEmpty())
-        }.getOrElse {
-            if (prefs.getBoolean(KEY_LEGACY_MESH_GRADIENT, false)) PlayerTheme.LEGACY else PlayerTheme.DEFAULT
-        }
+        legacyMeshGradient.value = prefs.getBoolean(KEY_LEGACY_MESH_GRADIENT, false)
         lastPlayerScreen.value = runCatching {
             LastPlayerScreen.valueOf(
                 prefs.getString(KEY_LAST_PLAYER_SCREEN, null) ?: LastPlayerScreen.MAIN.name,
@@ -1092,11 +1086,17 @@ object AppSettings {
         lastfmPrimaryArtistOnly.value = prefs.getBoolean(KEY_LASTFM_PRIMARY_ARTIST_ONLY, false)
         scrobbleMinDuration.value = prefs.getInt(KEY_SCROBBLE_MIN_DURATION, 30)
         scrobbleDelayPercent.value = prefs.getFloat(KEY_SCROBBLE_DELAY_PERCENT, 0.5f)
-        scrobbleDelaySeconds.value = prefs.getInt(KEY_SCROBBLE_DELAY_SECONDS, 180)
+        scrobbleDelaySeconds.value = prefs.getInt(KEY_SCROBBLE_DELAY_SECONDS, 240)
         listenBrainzEnabled.value = prefs.getBoolean(KEY_LISTENBRAINZ_ENABLED, false)
         listenBrainzToken.value = prefs.getString(KEY_LISTENBRAINZ_TOKEN, "").orEmpty()
         listenBrainzPrimaryArtistOnly.value = prefs.getBoolean(KEY_LISTENBRAINZ_PRIMARY_ARTIST_ONLY, false)
-        spotifySpdcToken.value = prefs.getString(KEY_SPOTIFY_SPDC_TOKEN, "").orEmpty()
+        spotifyConnected.value = prefs.getBoolean(KEY_SPOTIFY_CONNECTED, false)
+        spotifyScrobbleEnabled.value = prefs.getBoolean(KEY_SPOTIFY_SCROBBLE_ENABLED, true)
+        spotifyLastSyncMs.value = prefs.getLong(KEY_SPOTIFY_LAST_SYNC_MS, 0L)
+        spotifyLastSyncError.value = prefs.getString(KEY_SPOTIFY_LAST_SYNC_ERROR, "").orEmpty()
+        stopOnProviderError.value = prefs.getBoolean(KEY_STOP_ON_PROVIDER_ERROR, false)
+        providerMatchOverrides.value =
+            ProviderMatchOverrides.decode(prefs.getString(KEY_PROVIDER_MATCH_OVERRIDES, null))
         replayGenres.value = prefs.getBoolean(KEY_REPLAY_GENRES, true)
         filterNonMusicAudio.value = prefs.getBoolean(KEY_FILTER_NON_MUSIC_AUDIO, true)
         localMusicSort.value = readLocalMusicSort(KEY_LOCAL_MUSIC_SORT)
@@ -1145,6 +1145,15 @@ object AppSettings {
         discordButton2Text.value = prefs.getString(KEY_DISCORD_BUTTON_2_TEXT, "").orEmpty()
         discordButton2Visible.value = prefs.getBoolean(KEY_DISCORD_BUTTON_2_VISIBLE, true)
         discordInfoDismissed.value = prefs.getBoolean(KEY_DISCORD_INFO_DISMISSED, false)
+
+        // ── 1.9 UX ──────────────────────────────────────────────────────
+        userGreetingName.value = prefs.getString(KEY_USER_GREETING_NAME, "").orEmpty()
+        isFirstLaunch.value = prefs.getBoolean(KEY_IS_FIRST_LAUNCH, false)
+        newUI.value = prefs.getBoolean(KEY_NEW_UI, true)
+        newPlayer.value = prefs.getBoolean(KEY_NEW_PLAYER, true)
+        legacyPlayer.value = prefs.getBoolean(KEY_LEGACY_PLAYER, false)
+        albumArtSquare.value = prefs.getBoolean(KEY_ALBUM_ART_SQUARE, false)
+        bitPerfectOutput.value = prefs.getBoolean(KEY_BIT_PERFECT_OUTPUT, false)
     }
 
     /**
@@ -1154,8 +1163,7 @@ object AppSettings {
      * the very first call seeds the stored value from [currentVersionCode]
      * rather than reporting an update.
      *
-     * BitChord ships sideloaded (see [com.music.bitchord.data.AppUpdateChecker]),
-     * so installing a new APK over the old one is the only "update" there is —
+     * BitChord ships sideloaded, so installing a new APK over the old one is the only "update" there is —
      * app data, this pref included, survives it exactly like a Play Store
      * update. Call once per process start, before anything reads a cache that
      * an update should invalidate.
@@ -1327,6 +1335,12 @@ object AppSettings {
         prefs.edit().putBoolean(KEY_EQ_ENABLED, value).apply()
     }
 
+    /** Whether the EQ curve also drives the system audio session. */
+    fun setEqualizerSystemWide(value: Boolean) {
+        equalizerSystemWide.value = value
+        prefs.edit().putBoolean(KEY_EQ_SYSTEM_WIDE, value).apply()
+    }
+
     fun setEqualizerMode(value: EqualizerMode) {
         equalizerMode.value = value
         prefs.edit().putString(KEY_EQ_MODE, value.name).apply()
@@ -1386,6 +1400,100 @@ object AppSettings {
         }
     }
 
+    fun setEqualizerParametricBandCount(count: Int) {
+        val sanitized = ParametricLayout.sanitizeCount(count)
+        if (sanitized == equalizerParametricBands.value) return
+        val bands = recentreParametric(equalizerParametric.value, sanitized)
+        equalizerParametricBands.value = sanitized
+        equalizerParametric.value = bands
+        prefs.edit().putInt(KEY_EQ_PARAMETRIC_BANDS, sanitized).apply()
+        saveEqualizerParametric(bands)
+    }
+
+    /**
+     * Writes one band and leaves the rest of the bank alone.
+     *
+     * The whole list is stored again rather than a key per band for the reason
+     * [setEqualizerBands] gives: it is one string to keep in step, and a backup
+     * that carries the preference file carries all of it.
+     */
+    fun setEqualizerParametricBand(index: Int, band: ParametricBand) {
+        val bands = equalizerParametric.value
+        if (index !in bands.indices) return
+        val updated = bands.toMutableList()
+        updated[index] = ParametricBand(
+            frequencyHz = band.frequencyHz.coerceIn(ParametricLayout.MIN_HZ, ParametricLayout.MAX_HZ),
+            q = band.q.coerceIn(ParametricLayout.MIN_Q, ParametricLayout.MAX_Q),
+            gainDb = band.gainDb.coerceIn(-ParametricLayout.RANGE_DB, ParametricLayout.RANGE_DB),
+            enabled = band.enabled,
+        )
+        equalizerParametric.value = updated
+        saveEqualizerParametric(updated)
+    }
+
+    /** Back to the default centres at 0 dB, for the count currently selected. */
+    fun resetEqualizerParametric() {
+        val bands = ParametricLayout.defaults(equalizerParametricBands.value)
+        equalizerParametric.value = bands
+        saveEqualizerParametric(bands)
+    }
+
+    private fun saveEqualizerParametric(bands: List<ParametricBand>) {
+        prefs.edit().putString(KEY_EQ_PARAMETRIC, encodeParametric(bands)).apply()
+    }
+
+    private fun encodeParametric(bands: List<ParametricBand>): String =
+        bands.joinToString(";") { band ->
+            "${band.frequencyHz}:${band.q}:${band.gainDb}:${if (band.enabled) 1 else 0}"
+        }
+
+    /**
+     * Reads the bank back, re-centring if it was stored under the other count.
+     *
+     * Matching is by nearest centre rather than by position: moving between 10
+     * and 19 bands lands the two sets on different frequencies, so index 3 of
+     * one is nothing like index 3 of the other, but the band nearest a centre
+     * usually is the same one the user shaped.
+     */
+    private fun readEqualizerParametric(count: Int): List<ParametricBand> {
+        val defaults = ParametricLayout.defaults(count)
+        val stored = prefs.getString(KEY_EQ_PARAMETRIC, null) ?: return defaults
+        val parsed = stored.split(";").mapNotNull { entry ->
+            val parts = entry.split(":")
+            if (parts.size < 3) return@mapNotNull null
+            val hz = parts[0].toFloatOrNull() ?: return@mapNotNull null
+            val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
+            val gain = parts[2].toFloatOrNull() ?: return@mapNotNull null
+            ParametricBand(
+                frequencyHz = hz.coerceIn(ParametricLayout.MIN_HZ, ParametricLayout.MAX_HZ),
+                q = q.coerceIn(ParametricLayout.MIN_Q, ParametricLayout.MAX_Q),
+                gainDb = gain.coerceIn(-ParametricLayout.RANGE_DB, ParametricLayout.RANGE_DB),
+                enabled = parts.getOrNull(3) != "0",
+            )
+        }
+        if (parsed.isEmpty()) return defaults
+        return if (parsed.size == count) {
+            parsed.take(count)
+        } else {
+            recentreParametric(parsed, count)
+        }
+    }
+
+    /**
+     * The [count]-band default grid, carrying the gain each new centre had in
+     * [old] when an old band sat close enough to it to be the same one. Q goes
+     * back to the default: a width tuned for one grid's spacing is the wrong
+     * width for another's.
+     */
+    private fun recentreParametric(old: List<ParametricBand>, count: Int): List<ParametricBand> {
+        val q = ParametricLayout.defaultQ(count)
+        return ParametricLayout.defaultFrequencies(count).map { hz ->
+            val near = old.minByOrNull { abs(ln(it.frequencyHz / hz)) }
+            val close = near != null && abs(ln(near.frequencyHz / hz)) <= RECENTRE_OCTAVES
+            ParametricBand(hz, q, if (close) near.gainDb else 0f)
+        }
+    }
+
     fun setPlaybackSpeed(value: Float) {
         playbackSpeed.value = value
         prefs.edit().putFloat(KEY_SPEED, value).apply()
@@ -1424,11 +1532,6 @@ object AppSettings {
         prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETE, true).apply()
     }
 
-    fun setDiwaliGreetingShown() {
-        diwaliGreetingShown.value = true
-        prefs.edit().putBoolean(KEY_DIWALI_GREETING_SHOWN, true).apply()
-    }
-
     fun setStopOnTaskRemoved(value: Boolean) {
         stopOnTaskRemoved.value = value
         prefs.edit().putBoolean(KEY_STOP_ON_TASK_REMOVED, value).apply()
@@ -1464,45 +1567,9 @@ object AppSettings {
         prefs.edit().putBoolean(KEY_DONT_REPEAT_SUGGESTIONS, value).apply()
     }
 
-    fun setPreferMusicOnly(value: Boolean) {
-        preferMusicOnly.value = value
-        prefs.edit().putBoolean(KEY_PREFER_MUSIC_ONLY, value).apply()
-    }
-
-    fun setHideRecents(value: Boolean) {
-        hideRecents.value = value
-        prefs.edit().putBoolean(KEY_HIDE_RECENTS, value).apply()
-    }
-
-    fun setHideHomeVideos(value: Boolean) {
-        hideHomeVideos.value = value
-        prefs.edit().putBoolean(KEY_HIDE_HOME_VIDEOS, value).apply()
-    }
-
-    fun setHideTopPicks(value: Boolean) {
-        hideTopPicks.value = value
-        prefs.edit().putBoolean(KEY_HIDE_TOP_PICKS, value).apply()
-    }
-
-    fun setHideHomeMoods(value: Boolean) {
-        hideHomeMoods.value = value
-        prefs.edit().putBoolean(KEY_HIDE_HOME_MOODS, value).apply()
-    }
-
-    fun setSquareVideoThumbnails(value: Boolean) {
-        squareVideoThumbnails.value = value
-        VideoThumbnails.square = value
-        prefs.edit().putBoolean(KEY_SQUARE_VIDEO_THUMBNAILS, value).apply()
-    }
-
     fun setSmartVersionAlignment(value: Boolean) {
         smartVersionAlignment.value = value
         prefs.edit().putBoolean(KEY_SMART_VERSION_ALIGNMENT, value).apply()
-    }
-
-    fun setDisableBlendEffects(value: Boolean) {
-        disableBlendEffects.value = value
-        prefs.edit().putBoolean(KEY_DISABLE_BLEND_EFFECTS, value).apply()
     }
 
     fun setReduceDynamicBlur(value: Boolean) {
@@ -1516,11 +1583,6 @@ object AppSettings {
     fun setLiquidGlass(value: Boolean) {
         liquidGlass.value = value
         prefs.edit().putBoolean(KEY_LIQUID_GLASS, value).apply()
-    }
-
-    fun setGlassPerformance(value: Boolean) {
-        glassPerformance.value = value
-        prefs.edit().putBoolean(KEY_GLASS_PERFORMANCE, value).apply()
     }
 
     fun setProgressiveBlur(value: Boolean) {
@@ -1706,14 +1768,9 @@ object AppSettings {
         prefs.edit().putBoolean(KEY_FULL_BLEED_ARTWORK, value).apply()
     }
 
-    fun setFullBleedDetailArtwork(value: Boolean) {
-        fullBleedDetailArtwork.value = value
-        prefs.edit().putBoolean(KEY_FULL_BLEED_DETAIL_ARTWORK, value).apply()
-    }
-
-    fun setPlayerTheme(value: PlayerTheme) {
-        playerTheme.value = value
-        prefs.edit().putString(KEY_PLAYER_THEME, value.name).apply()
+    fun setLegacyMeshGradient(value: Boolean) {
+        legacyMeshGradient.value = value
+        prefs.edit().putBoolean(KEY_LEGACY_MESH_GRADIENT, value).apply()
     }
 
     fun setLastPlayerScreen(value: LastPlayerScreen) {
@@ -1773,8 +1830,58 @@ object AppSettings {
 
     fun setSpotifySpdcToken(value: String) {
         spotifySpdcToken.value = value
-        prefs.edit().putString(KEY_SPOTIFY_SPDC_TOKEN, value).apply()
         SpotifyToken.invalidate()
+    }
+
+    fun setSpotifySptToken(value: String) {
+        spotifySptToken.value = value
+    }
+
+    fun setSpotifyCookieHeader(value: String) {
+        spotifyCookieHeader.value = value
+        SpotifyToken.invalidate()
+    }
+
+    fun setSpotifyConnected(value: Boolean) {
+        spotifyConnected.value = value
+        prefs.edit().putBoolean(KEY_SPOTIFY_CONNECTED, value).apply()
+    }
+
+    fun setSpotifyScrobbleEnabled(value: Boolean) {
+        spotifyScrobbleEnabled.value = value
+        prefs.edit().putBoolean(KEY_SPOTIFY_SCROBBLE_ENABLED, value).apply()
+    }
+
+    fun setSpotifyLastSync(success: Boolean, error: String = "") {
+        if (success) {
+            spotifyLastSyncMs.value = System.currentTimeMillis()
+            spotifyLastSyncError.value = ""
+            prefs.edit().putLong(KEY_SPOTIFY_LAST_SYNC_MS, spotifyLastSyncMs.value)
+                .remove(KEY_SPOTIFY_LAST_SYNC_ERROR).apply()
+        } else {
+            spotifyLastSyncError.value = error
+            prefs.edit().putString(KEY_SPOTIFY_LAST_SYNC_ERROR, error).apply()
+        }
+    }
+
+    fun setStopOnProviderError(value: Boolean) {
+        stopOnProviderError.value = value
+        prefs.edit().putBoolean(KEY_STOP_ON_PROVIDER_ERROR, value).apply()
+    }
+
+    fun setProviderMatchOverride(mediaId: String, override: ProviderMatchOverride?) {
+        val next = if (override == null) {
+            ProviderMatchOverrides.withoutOverride(providerMatchOverrides.value, mediaId)
+        } else {
+            ProviderMatchOverrides.withOverride(providerMatchOverrides.value, mediaId, override)
+        }
+        providerMatchOverrides.value = next
+        prefs.edit().putString(KEY_PROVIDER_MATCH_OVERRIDES, ProviderMatchOverrides.encode(next)).apply()
+    }
+
+    fun clearProviderMatchOverrides() {
+        providerMatchOverrides.value = emptyMap()
+        prefs.edit().remove(KEY_PROVIDER_MATCH_OVERRIDES).apply()
     }
 
     fun setLastfmScrobbleEnabled(value: Boolean) {
@@ -1947,6 +2054,43 @@ object AppSettings {
     fun setDiscordInfoDismissed(value: Boolean) {
         discordInfoDismissed.value = value
         prefs.edit().putBoolean(KEY_DISCORD_INFO_DISMISSED, value).apply()
+    }
+
+    // ── 1.9 UX setters ──────────────────────────────────────────────────────
+
+    fun setUserGreetingName(value: String) {
+        userGreetingName.value = value
+        prefs.edit().putString(KEY_USER_GREETING_NAME, value).apply()
+    }
+
+    fun setIsFirstLaunch(value: Boolean) {
+        isFirstLaunch.value = value
+        prefs.edit().putBoolean(KEY_IS_FIRST_LAUNCH, value).apply()
+    }
+
+    fun setNewUI(value: Boolean) {
+        newUI.value = value
+        prefs.edit().putBoolean(KEY_NEW_UI, value).apply()
+    }
+
+    fun setNewPlayer(value: Boolean) {
+        newPlayer.value = value
+        prefs.edit().putBoolean(KEY_NEW_PLAYER, value).apply()
+    }
+
+    fun setLegacyPlayer(value: Boolean) {
+        legacyPlayer.value = value
+        prefs.edit().putBoolean(KEY_LEGACY_PLAYER, value).apply()
+    }
+
+    fun setAlbumArtSquare(value: Boolean) {
+        albumArtSquare.value = value
+        prefs.edit().putBoolean(KEY_ALBUM_ART_SQUARE, value).apply()
+    }
+
+    fun setBitPerfectOutput(value: Boolean) {
+        bitPerfectOutput.value = value
+        prefs.edit().putBoolean(KEY_BIT_PERFECT_OUTPUT, value).apply()
     }
 
     fun setReplayGenres(value: Boolean) {
@@ -2202,7 +2346,6 @@ object AppSettings {
         KEY_LASTFM_API_KEY,
         KEY_LASTFM_SECRET,
         KEY_LISTENBRAINZ_TOKEN,
-        KEY_SPOTIFY_SPDC_TOKEN,
         KEY_PAXSENIX_API_KEY,
     )
 
@@ -2276,6 +2419,12 @@ object AppSettings {
     private const val KEY_EQ_FOCUSED = "equalizer_focused"
     private const val KEY_EQ_BALANCE = "equalizer_balance"
     private const val KEY_EQ_BANDS = "equalizer_bands"
+    private const val KEY_EQ_PARAMETRIC = "equalizer_parametric"
+    private const val KEY_EQ_PARAMETRIC_BANDS = "equalizer_parametric_bands"
+private const val KEY_EQ_SYSTEM_WIDE = "equalizer_system_wide"
+
+    /** How far a centre may move and still count as the same band when the count changes. */
+    private const val RECENTRE_OCTAVES = 0.2
     private const val KEY_SPEED = "playback_speed"
     private const val KEY_THEME = "theme_mode"
     private const val KEY_APP_FONT = "app_font"
@@ -2287,7 +2436,6 @@ object AppSettings {
     private const val KEY_CACHE_LIMIT = "audio_cache_limit_bytes"
     private const val KEY_REDUCE_ANIMATION = "reduce_animation"
     private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
-    private const val KEY_DIWALI_GREETING_SHOWN = "diwali_greeting_2026_shown"
     private const val KEY_HIGH_PERFORMANCE_MODE = "high_performance_mode"
     private const val KEY_PERFORMANCE_REFRESH_RATE = "performance_refresh_rate"
     private const val KEY_STOP_ON_TASK_REMOVED = "stop_on_task_removed"
@@ -2297,17 +2445,9 @@ object AppSettings {
     private const val KEY_SHOW_QUEUE_HISTORY = "show_queue_history"
     private const val KEY_SWIPE_TO_PLAY_NEXT = "swipe_to_play_next"
     private const val KEY_DONT_REPEAT_SUGGESTIONS = "dont_repeat_suggestions"
-    private const val KEY_PREFER_MUSIC_ONLY = "prefer_music_only"
-    private const val KEY_HIDE_RECENTS = "hide_recents"
-    private const val KEY_HIDE_HOME_VIDEOS = "hide_home_videos"
-    private const val KEY_HIDE_TOP_PICKS = "hide_top_picks"
-    private const val KEY_HIDE_HOME_MOODS = "hide_home_moods"
-    private const val KEY_SQUARE_VIDEO_THUMBNAILS = "square_video_thumbnails"
     private const val KEY_SMART_VERSION_ALIGNMENT = "smart_version_alignment"
     private const val KEY_REDUCE_BLUR = "reduce_dynamic_blur"
-    private const val KEY_DISABLE_BLEND_EFFECTS = "disable_blend_effects"
     private const val KEY_LIQUID_GLASS = "liquid_glass"
-    private const val KEY_GLASS_PERFORMANCE = "glass_performance"
     private const val KEY_PROGRESSIVE_BLUR = "progressive_blur"
     private const val KEY_LYRICS_BLUR = "lyrics_blur"
     private const val KEY_LYRICS_OFFSET_MS = "lyrics_offset_ms"
@@ -2319,8 +2459,6 @@ object AppSettings {
     private const val KEY_SIGNATURE_API_ENABLED = "signature_api_enabled"
     private const val KEY_SIGNATURE_API_URL = "signature_api_url"
     private const val KEY_FULL_BLEED_ARTWORK = "full_bleed_artwork"
-    private const val KEY_FULL_BLEED_DETAIL_ARTWORK = "full_bleed_detail_artwork"
-    private const val KEY_PLAYER_THEME = "player_theme"
     private const val KEY_LEGACY_MESH_GRADIENT = "legacy_mesh_gradient"
     private const val KEY_LAST_PLAYER_SCREEN = "last_player_screen"
     private const val KEY_SYNCED_LYRICS = "synced_lyrics"
@@ -2362,7 +2500,12 @@ object AppSettings {
     private const val KEY_LISTENBRAINZ_ENABLED = "listenbrainz_enabled"
     private const val KEY_LISTENBRAINZ_TOKEN = "listenbrainz_token"
     private const val KEY_LISTENBRAINZ_PRIMARY_ARTIST_ONLY = "listenbrainz_primary_artist_only"
-    private const val KEY_SPOTIFY_SPDC_TOKEN = "spotify_spdc_token"
+    private const val KEY_SPOTIFY_CONNECTED = "spotify_connected"
+    private const val KEY_SPOTIFY_SCROBBLE_ENABLED = "spotify_scrobble_enabled"
+    private const val KEY_SPOTIFY_LAST_SYNC_MS = "spotify_last_sync_ms"
+    private const val KEY_SPOTIFY_LAST_SYNC_ERROR = "spotify_last_sync_error"
+    private const val KEY_STOP_ON_PROVIDER_ERROR = "stop_on_provider_error"
+    private const val KEY_PROVIDER_MATCH_OVERRIDES = "provider_match_overrides"
 
     private const val KEY_DISCORD_USERNAME = "discord_username"
     private const val KEY_DISCORD_NAME = "discord_name"
@@ -2380,6 +2523,40 @@ object AppSettings {
     private const val KEY_DISCORD_BUTTON_2_VISIBLE = "discord_button_2_visible"
     private const val KEY_DISCORD_INFO_DISMISSED = "discord_info_dismissed"
     private const val KEY_LAST_VERSION_CODE = "last_version_code"
+
+    // ── 1.9 UX ──────────────────────────────────────────────────────
+
+    /** User-chosen name for the greeting on first launch. */
+    val userGreetingName = MutableStateFlow("")
+    private const val KEY_USER_GREETING_NAME = "user_greeting_name"
+
+    /** True until the greeting flow has been completed once. */
+    val isFirstLaunch = MutableStateFlow(false)
+    private const val KEY_IS_FIRST_LAUNCH = "is_first_launch"
+
+    /** Use the refreshed 1.9 home/explore UI (larger cards, music videos). */
+    val newUI = MutableStateFlow(true)
+    private const val KEY_NEW_UI = "new_ui"
+
+    /** Use the full-screen player with enlarged artwork and transport. */
+    val newPlayer = MutableStateFlow(true)
+    private const val KEY_NEW_PLAYER = "new_player"
+
+    /**
+     * Draw the v1.8 player instead of the current one — a faithful parallel
+     * copy (LegacyNowPlayingScreen) behind one switch, for anyone who prefers
+     * that layout. Off by default: the current player stays what everyone gets.
+     */
+    val legacyPlayer = MutableStateFlow(false)
+    private const val KEY_LEGACY_PLAYER = "legacy_player"
+
+    /** Show square album/EP cover art instead of rounded in the player. */
+    val albumArtSquare = MutableStateFlow(false)
+    private const val KEY_ALBUM_ART_SQUARE = "album_art_square"
+
+    /** Bit-perfect output: request the exact PCM format without resampling. */
+    val bitPerfectOutput = MutableStateFlow(false)
+    private const val KEY_BIT_PERFECT_OUTPUT = "bit_perfect_output"
 }
 
 
