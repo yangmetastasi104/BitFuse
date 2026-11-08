@@ -83,6 +83,16 @@ Captured from BitFuse running in the Android emulator. The demo install uses no 
       <br/><strong>Search enabled add-ons directly</strong>
     </td>
   </tr>
+  <tr>
+    <td width="50%" valign="top" align="center">
+      <img src="docs/screenshots/home.png" alt="BitFuse Home screen" width="340" />
+      <br/><strong>Home and personalized picks</strong>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <img src="docs/screenshots/settings.png" alt="BitFuse settings screen" width="340" />
+      <br/><strong>Playback and account settings</strong>
+    </td>
+  </tr>
 </table>
 
 </div>
