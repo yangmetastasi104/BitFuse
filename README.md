@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/github/license/yangmetastasi104/BitFuse?style=for-the-badge&labelColor=0d1117)](LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/yangmetastasi104/BitFuse/total?style=for-the-badge&labelColor=0d1117)](https://github.com/yangmetastasi104/BitFuse/releases)
 
-[**Download**](#download) · [**Features**](#features) · [**Contributing**](#contributing) · [**Support**](#support) · [**Upstream**](#upstream)
+[**Download**](#download) · [**Features**](#features) · [**Screenshots**](#screenshots) · [**Contributing**](#contributing) · [**Support**](#support) · [**Upstream**](#upstream)
 
 </div>
 
@@ -58,6 +58,29 @@
 - **System equalizer** and **bit-perfect USB output** for compatible DACs.
 - **Stats for nerds** — inspect codec, bit depth, sample rate, and more.
 
+    </td>
+  </tr>
+</table>
+
+</div>
+
+---
+
+<div align="center">
+
+<h1><a id="screenshots"></a>Screenshots</h1>
+
+Captured from BitFuse running in the Android emulator. The demo install uses no signed-in accounts.
+
+<table>
+  <tr>
+    <td width="50%" valign="top" align="center">
+      <img src="docs/screenshots/sources.png" alt="BitFuse source management screen" width="340" />
+      <br/><strong>Choose and manage audio sources</strong>
+    </td>
+    <td width="50%" valign="top" align="center">
+      <img src="docs/screenshots/addons-search.png" alt="BitFuse add-on search screen" width="340" />
+      <br/><strong>Search enabled add-ons directly</strong>
     </td>
   </tr>
 </table>
