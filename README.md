@@ -23,7 +23,7 @@
 
 <div align="center">
 
-<img src="Banner.png" alt="BitFuse banner" width="100%" />
+<img src="Banner.jpg" alt="BitFuse banner" width="100%" />
 
 <h1><a id="features"></a>Features</h1>
 
