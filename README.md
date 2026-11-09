@@ -70,7 +70,7 @@
 
 <h1><a id="screenshots"></a>Screenshots</h1>
 
-Captured from BitFuse running in the Android emulator. The demo install uses no signed-in accounts.
+Captured from BitFuse running on Android. The gallery below includes the full set of shared screens with the status bar removed.
 
 <table>
   <tr>
@@ -100,6 +100,99 @@ Captured from BitFuse running in the Android emulator. The demo install uses no 
     </td>
   </tr>
 </table>
+<details>
+<summary>All additional screens (19)</summary>
+
+<table>
+  <tr>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-01.jpg" alt="BitFuse screenshot 01" width="210" />
+      <br/><strong>Screen 01</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-02.jpg" alt="BitFuse screenshot 02" width="210" />
+      <br/><strong>Screen 02</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-03.jpg" alt="BitFuse screenshot 03" width="210" />
+      <br/><strong>Screen 03</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-04.jpg" alt="BitFuse screenshot 04" width="210" />
+      <br/><strong>Screen 04</strong>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-05.jpg" alt="BitFuse screenshot 05" width="210" />
+      <br/><strong>Screen 05</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-06.jpg" alt="BitFuse screenshot 06" width="210" />
+      <br/><strong>Screen 06</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-07.jpg" alt="BitFuse screenshot 07" width="210" />
+      <br/><strong>Screen 07</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-08.jpg" alt="BitFuse screenshot 08" width="210" />
+      <br/><strong>Screen 08</strong>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-09.jpg" alt="BitFuse screenshot 09" width="210" />
+      <br/><strong>Screen 09</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-10.jpg" alt="BitFuse screenshot 10" width="210" />
+      <br/><strong>Screen 10</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-11.jpg" alt="BitFuse screenshot 11" width="210" />
+      <br/><strong>Screen 11</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-12.jpg" alt="BitFuse screenshot 12" width="210" />
+      <br/><strong>Screen 12</strong>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-13.jpg" alt="BitFuse screenshot 13" width="210" />
+      <br/><strong>Screen 13</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-14.jpg" alt="BitFuse screenshot 14" width="210" />
+      <br/><strong>Screen 14</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-15.jpg" alt="BitFuse screenshot 15" width="210" />
+      <br/><strong>Screen 15</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-16.jpg" alt="BitFuse screenshot 16" width="210" />
+      <br/><strong>Screen 16</strong>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-17.jpg" alt="BitFuse screenshot 17" width="210" />
+      <br/><strong>Screen 17</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-18.jpg" alt="BitFuse screenshot 18" width="210" />
+      <br/><strong>Screen 18</strong>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshots/telegram-screen-19.jpg" alt="BitFuse screenshot 19" width="210" />
+      <br/><strong>Screen 19</strong>
+    </td>
+  </tr>
+</table>
+
+</details>
 
 </div>
 
