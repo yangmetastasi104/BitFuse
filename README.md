@@ -70,7 +70,7 @@
 
 <h1><a id="screenshots"></a>Screenshots</h1>
 
-Screens captured from BitFuse running on Android.
+Captured from BitFuse running in the Android emulator. The demo install uses no signed-in accounts.
 
 <table>
   <tr>
@@ -91,20 +91,6 @@ Screens captured from BitFuse running on Android.
     <td width="50%" valign="top" align="center">
       <img src="docs/screenshots/settings.png" alt="BitFuse settings screen" width="340" />
       <br/><strong>Playback and account settings</strong>
-    </td>
-  </tr>
-  <tr>
-    <td width="33%" valign="top" align="center">
-      <img src="docs/screenshots/bitfuse-player.jpg" alt="BitFuse full-screen player" width="280" />
-      <br/><strong>Full-screen player</strong>
-    </td>
-    <td width="33%" valign="top" align="center">
-      <img src="docs/screenshots/bitfuse-player-art.jpg" alt="BitFuse player with album artwork" width="280" />
-      <br/><strong>Player with artwork</strong>
-    </td>
-    <td width="33%" valign="top" align="center">
-      <img src="docs/screenshots/bitfuse-share-card.jpg" alt="BitFuse share card preview" width="280" />
-      <br/><strong>BitFuse share card</strong>
     </td>
   </tr>
 </table>
