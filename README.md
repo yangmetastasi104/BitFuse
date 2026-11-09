@@ -93,6 +93,12 @@ Captured from BitFuse running in the Android emulator. The demo install uses no 
       <br/><strong>Playback and account settings</strong>
     </td>
   </tr>
+  <tr>
+    <td width="50%" valign="top" align="center">
+      <img src="docs/screenshots/bitfuse-player-mocrologia.jpg" alt="BitFuse full-screen Hi-Res Lossless player" width="340" />
+      <br/><strong>Hi-Res Lossless player</strong>
+    </td>
+  </tr>
 </table>
 
 </div>
