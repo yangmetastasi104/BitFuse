@@ -29,9 +29,9 @@ import kotlin.math.tan
  * controls (Bass / Treble) share the two shelf sections rather than sitting in
  * series with them, so a curve that touches both adds the two gains together.
  *
- * Slots [EqLayout.SLOTS] onwards are the parametric bank: always bells, and
- * always present, but taking their centre from the curve instead of from the
- * layout. The two families share one cascade for the reason [EqLayout] gives —
+ * Slots [EqLayout.SLOTS] onwards are the parametric bank, always present and
+ * taking their centre and shape from the curve instead of from the layout. The
+ * two families share one cascade for the reason [EqLayout] gives —
  * the running filters never change shape, so a band dragged from 200 Hz to 5 kHz
  * is a coefficient update rather than a rebuilt chain.
  *
@@ -80,6 +80,7 @@ class EqualizerProcessor : BaseAudioProcessor() {
 
     private val currentGainDb = FloatArray(EqLayout.ALL_SLOTS)
     private val currentQ = FloatArray(EqLayout.ALL_SLOTS) { 0.707f }
+    private val currentKind = Array(EqLayout.ALL_SLOTS) { slot -> EqLayout.kindOf(slot) }
 
     /**
      * Where each slot sits right now. Fixed slots never move; the parametric
@@ -288,12 +289,17 @@ class EqualizerProcessor : BaseAudioProcessor() {
         tuning.curve.gainsDb.copyInto(currentGainDb)
         tuning.curve.qs.copyInto(currentQ)
         tuning.curve.freqsHz.copyInto(currentHz)
+        tuning.curve.kinds.copyInto(currentKind)
         currentPreampDb = tuning.curve.preampDb
         currentBalance = tuning.balance
     }
 
     private fun glideTowards(tuning: Tuning) {
         for (slot in 0 until EqLayout.ALL_SLOTS) {
+            if (currentKind[slot] != tuning.curve.kinds[slot]) {
+                currentKind[slot] = tuning.curve.kinds[slot]
+                clearState(slot)
+            }
             currentGainDb[slot] = linearGlide(currentGainDb[slot], tuning.curve.gainsDb[slot])
             currentQ[slot] = geometricGlide(currentQ[slot], tuning.curve.qs[slot])
             // Only the parametric bank owns its centre: a fixed slot drifting
@@ -325,6 +331,7 @@ class EqualizerProcessor : BaseAudioProcessor() {
         if (abs(currentBalance - tuning.balance) >= SETTLED_BALANCE) return false
         if (abs(currentPreampDb - tuning.curve.preampDb) >= SETTLED_DB) return false
         for (slot in 0 until EqLayout.ALL_SLOTS) {
+            if (currentKind[slot] != tuning.curve.kinds[slot]) return false
             if (abs(currentGainDb[slot] - tuning.curve.gainsDb[slot]) >= SETTLED_DB) return false
             if (!EqLayout.isFixed(slot) &&
                 abs(currentHz[slot] - tuning.curve.freqsHz[slot]) > SETTLED_HZ
@@ -354,7 +361,7 @@ class EqualizerProcessor : BaseAudioProcessor() {
 
     private fun updateCoefficients(slot: Int) {
         if (sampleRate <= 0) return
-        val kind = EqLayout.kindOf(slot)
+        val kind = currentKind[slot]
         val a = 10f.pow(currentGainDb[slot] / 40f)
         val q = currentQ[slot].coerceAtLeast(MIN_Q)
         val base = tan(Math.PI * usableFrequency(currentHz[slot]) / sampleRate).toFloat()

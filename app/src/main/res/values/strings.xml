@@ -297,7 +297,7 @@
     <string name="equalizer_bands_10">10 bands</string>
     <string name="equalizer_bands_19">19 bands</string>
     <string name="equalizer_parametric_bands">Curve</string>
-    <string name="equalizer_parametric_footer">Every band has its own centre, width and gain. Tap a band to slide it along the spectrum or change how wide it is.</string>
+    <string name="equalizer_parametric_footer">Every band has its own filter type, frequency, Q and gain (±24 dB). Tap a band to edit values with the keypad or sliders.</string>
     <string name="equalizer_band">Band %1$d</string>
     <string name="equalizer_band_shape">%1$s Hz · Q %2$s</string>
     <string name="equalizer_band_frequency">Frequency</string>

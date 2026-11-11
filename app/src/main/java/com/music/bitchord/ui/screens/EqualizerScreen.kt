@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -28,10 +29,12 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Waves
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -54,6 +57,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -65,6 +69,7 @@ import com.music.bitchord.data.settings.EqualizerMode
 import com.music.bitchord.playback.AudioOutputStatus
 import com.music.bitchord.playback.EqLayout
 import com.music.bitchord.playback.EqualizerPreset
+import com.music.bitchord.playback.FilterKind
 import com.music.bitchord.playback.ParametricBand
 import com.music.bitchord.playback.ParametricLayout
 import com.music.bitchord.ui.haptics.Haptic
@@ -90,8 +95,8 @@ import kotlin.math.roundToInt
  * **Manual** is the seven-band graphic equaliser, with a preset list over it.
  *
  * **Parametric** is the same idea with the filters unbolted: a bank of ten or
- * nineteen bells, each with its own centre, width (Q) and gain. The other two
- * tabs choose the frequencies for you; this one hands them over.
+ * nineteen bands, each with its own filter type (PK/LSQ/HSQ), frequency, width
+ * (Q) and gain. Values can be entered from the keypad or adjusted by touch.
  *
  * All three drive the same filters — see [EqLayout] — so the tab is a way of
  * describing a curve rather than a different piece of audio machinery, and
@@ -828,17 +833,16 @@ private fun ParametricBandRow(
             value = band.gainDb,
             onValueChange = { onChange(band.withGain(snapGain(it, ParametricLayout.RANGE_DB))) },
             valueRange = -ParametricLayout.RANGE_DB..ParametricLayout.RANGE_DB,
-            // Twenty-four decibels of travel in half-decibel steps.
-            steps = 47,
+            // Forty-eight decibels of travel in half-decibel steps.
+            steps = 95,
             enabled = enabled,
         )
     }
 }
 
 /**
- * The band's two remaining numbers, on sliders that move by ear rather than by
- * hertz: frequency is log-spaced from 20 Hz to 20 kHz, and Q likewise from
- * 0.2 to 12, so the whole useful range of each is one thumb travel.
+ * The band's filter shape, frequency, Q and gain. Sliders remain available for
+ * touch; the numeric fields also accept direct keypad input.
  */
 @Composable
 private fun ParametricBandSheet(
@@ -855,6 +859,72 @@ private fun ParametricBandSheet(
         )
         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline)
         Column(Modifier.padding(horizontal = 22.dp, vertical = 10.dp)) {
+            Text(
+                text = "Filter type",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(top = 6.dp, bottom = 8.dp),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterKind.entries.forEach { kind ->
+                    FilterChip(
+                        selected = band.kind == kind,
+                        onClick = { onChange(band.withKind(kind)) },
+                        label = { Text(kind.parametricLabel()) },
+                    )
+                }
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ParametricNumberField(
+                    label = "Hz",
+                    unit = "Hz",
+                    value = band.frequencyHz,
+                    keyboardType = KeyboardType.Number,
+                    min = ParametricLayout.MIN_HZ,
+                    max = ParametricLayout.MAX_HZ,
+                    modifier = Modifier.weight(1f),
+                    onValue = { onChange(band.withFrequency(it)) },
+                )
+                ParametricNumberField(
+                    label = "Q",
+                    unit = "",
+                    value = band.q,
+                    keyboardType = KeyboardType.Decimal,
+                    min = ParametricLayout.MIN_Q,
+                    max = ParametricLayout.MAX_Q,
+                    modifier = Modifier.weight(1f),
+                    onValue = { onChange(band.withQ(it)) },
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ParametricNumberField(
+                    label = "Gain",
+                    unit = "dB",
+                    value = abs(band.gainDb),
+                    keyboardType = KeyboardType.Decimal,
+                    min = 0f,
+                    max = ParametricLayout.RANGE_DB,
+                    modifier = Modifier.weight(1f),
+                    onValue = {
+                        val signed = if (band.gainDb < 0f) -it else it
+                        onChange(band.withGain(signed))
+                    },
+                )
+                FilterChip(
+                    selected = band.gainDb >= 0f,
+                    onClick = { onChange(band.withGain(abs(band.gainDb))) },
+                    label = { Text("+") },
+                )
+                FilterChip(
+                    selected = band.gainDb < 0f,
+                    onClick = { onChange(band.withGain(-abs(band.gainDb))) },
+                    label = { Text("−") },
+                )
+            }
             SliderLabel(
                 label = stringResource(R.string.equalizer_band_frequency),
                 value = formatFrequency(band.frequencyHz) + " Hz",
@@ -881,6 +951,46 @@ private fun ParametricBandSheet(
             )
         }
     }
+}
+
+/** Numeric entry for a band parameter; values update from the keypad as well as the sliders. */
+@Composable
+private fun ParametricNumberField(
+    label: String,
+    unit: String,
+    value: Float,
+    keyboardType: KeyboardType,
+    min: Float,
+    max: Float,
+    modifier: Modifier,
+    onValue: (Float) -> Unit,
+) {
+    var text by remember(label) { mutableStateOf(formatEntry(value)) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { input ->
+            val filtered = input.filter { it.isDigit() || it == '-' || it == '.' || it == ',' }
+            text = filtered
+            filtered.replace(',', '.').toFloatOrNull()?.let { parsed ->
+                if (parsed.isFinite() && parsed in min..max) onValue(parsed)
+            }
+        },
+        modifier = modifier,
+        label = { Text(label) },
+        suffix = if (unit.isNotEmpty()) ({ Text(unit) }) else null,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+    )
+}
+
+private fun formatEntry(value: Float): String =
+    if (abs(value - value.roundToInt()) < 0.01f) value.roundToInt().toString()
+    else String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+
+private fun FilterKind.parametricLabel(): String = when (this) {
+    FilterKind.BELL -> "PK"
+    FilterKind.LOW_SHELF -> "LSQ"
+    FilterKind.HIGH_SHELF -> "HSQ"
 }
 
 @Composable

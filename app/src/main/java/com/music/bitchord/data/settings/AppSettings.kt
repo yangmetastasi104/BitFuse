@@ -16,6 +16,7 @@ import com.music.bitchord.data.sources.ProviderMatchOverride
 import com.music.bitchord.data.sources.ProviderMatchOverrides
 import com.music.bitchord.playback.EqLayout
 import com.music.bitchord.playback.EqualizerPreset
+import com.music.bitchord.playback.FilterKind
 import com.music.bitchord.playback.ParametricBand
 import com.music.bitchord.playback.ParametricLayout
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -1426,6 +1427,7 @@ object AppSettings {
             q = band.q.coerceIn(ParametricLayout.MIN_Q, ParametricLayout.MAX_Q),
             gainDb = band.gainDb.coerceIn(-ParametricLayout.RANGE_DB, ParametricLayout.RANGE_DB),
             enabled = band.enabled,
+            kind = band.kind,
         )
         equalizerParametric.value = updated
         saveEqualizerParametric(updated)
@@ -1444,7 +1446,7 @@ object AppSettings {
 
     private fun encodeParametric(bands: List<ParametricBand>): String =
         bands.joinToString(";") { band ->
-            "${band.frequencyHz}:${band.q}:${band.gainDb}:${if (band.enabled) 1 else 0}"
+            "${band.frequencyHz}:${band.q}:${band.gainDb}:${if (band.enabled) 1 else 0}:${band.kind.name}"
         }
 
     /**
@@ -1469,6 +1471,9 @@ object AppSettings {
                 q = q.coerceIn(ParametricLayout.MIN_Q, ParametricLayout.MAX_Q),
                 gainDb = gain.coerceIn(-ParametricLayout.RANGE_DB, ParametricLayout.RANGE_DB),
                 enabled = parts.getOrNull(3) != "0",
+                kind = parts.getOrNull(4)?.let { storedKind ->
+                    FilterKind.entries.firstOrNull { it.name == storedKind }
+                } ?: FilterKind.BELL,
             )
         }
         if (parsed.isEmpty()) return defaults
@@ -1490,7 +1495,12 @@ object AppSettings {
         return ParametricLayout.defaultFrequencies(count).map { hz ->
             val near = old.minByOrNull { abs(ln(it.frequencyHz / hz)) }
             val close = near != null && abs(ln(near.frequencyHz / hz)) <= RECENTRE_OCTAVES
-            ParametricBand(hz, q, if (close) near.gainDb else 0f)
+            ParametricBand(
+                frequencyHz = hz,
+                q = q,
+                gainDb = if (close) near.gainDb else 0f,
+                kind = if (close) near.kind else FilterKind.BELL,
+            )
         }
     }
 

@@ -31,6 +31,7 @@ class ParametricBand(
     val q: Float,
     val gainDb: Float,
     val enabled: Boolean = true,
+    val kind: FilterKind = FilterKind.BELL,
 ) {
     fun withFrequency(hz: Float): ParametricBand =
         ParametricBand(
@@ -38,6 +39,7 @@ class ParametricBand(
             q = q,
             gainDb = gainDb,
             enabled = enabled,
+            kind = kind,
         )
 
     fun withQ(value: Float): ParametricBand =
@@ -46,6 +48,7 @@ class ParametricBand(
             q = value.coerceIn(ParametricLayout.MIN_Q, ParametricLayout.MAX_Q),
             gainDb = gainDb,
             enabled = enabled,
+            kind = kind,
         )
 
     fun withGain(value: Float): ParametricBand =
@@ -54,10 +57,14 @@ class ParametricBand(
             q = q,
             gainDb = value.coerceIn(-ParametricLayout.RANGE_DB, ParametricLayout.RANGE_DB),
             enabled = enabled,
+            kind = kind,
         )
 
     fun withEnabled(value: Boolean): ParametricBand =
-        ParametricBand(frequencyHz = frequencyHz, q = q, gainDb = gainDb, enabled = value)
+        ParametricBand(frequencyHz = frequencyHz, q = q, gainDb = gainDb, enabled = value, kind = kind)
+
+    fun withKind(value: FilterKind): ParametricBand =
+        ParametricBand(frequencyHz = frequencyHz, q = q, gainDb = gainDb, enabled = enabled, kind = value)
 }
 
 /**
@@ -76,7 +83,7 @@ object ParametricLayout {
     const val SMALL_BANDS = 10
 
     /** How far a band travels either way. */
-    const val RANGE_DB = 12f
+    const val RANGE_DB = 24f
 
     const val MIN_Q = 0.2f
     const val MAX_Q = 12f
@@ -199,7 +206,7 @@ object EqLayout {
     /** Whether [slot] is one of the ten fixed ones rather than a parametric band. */
     fun isFixed(slot: Int): Boolean = slot < SLOTS
 
-    /** The shape of [slot]: fixed slots as laid out here, parametric ones always bells. */
+    /** Default shape of a fixed slot; parametric shapes are carried in [EqCurve.kinds]. */
     fun kindOf(slot: Int): FilterKind =
         if (isFixed(slot)) slots[slot].kind else FilterKind.BELL
 }
@@ -237,6 +244,9 @@ class EqCurve(
 
     val qs = FloatArray(EqLayout.ALL_SLOTS) { initialQs.getOrElse(it) { 0.707f } }
 
+    /** Filter shape per slot; the parametric slots may each choose PK, LSQ, or HSQ. */
+    val kinds = Array(EqLayout.ALL_SLOTS) { slot -> EqLayout.kindOf(slot) }
+
     /**
      * Where each slot sits. The ten fixed slots copy [EqLayout]'s centres; the
      * bank after them takes each band's own, and stays at 1 kHz for bands a
@@ -252,6 +262,7 @@ class EqCurve(
             if (slot >= EqLayout.ALL_SLOTS) return@forEachIndexed
             freqsHz[slot] = band.frequencyHz.coerceIn(ParametricLayout.MIN_HZ, ParametricLayout.MAX_HZ)
             qs[slot] = band.q.coerceIn(ParametricLayout.MIN_Q, ParametricLayout.MAX_Q)
+            kinds[slot] = band.kind
             gainsDb[slot] = if (band.enabled) {
                 band.gainDb.coerceIn(-ParametricLayout.RANGE_DB, ParametricLayout.RANGE_DB)
             } else {
@@ -347,7 +358,7 @@ private fun preampFor(curve: EqCurve): Float {
         var sum = 0f
         for (slot in 0 until EqLayout.ALL_SLOTS) {
             sum += sectionGainDb(
-                kind = EqLayout.kindOf(slot),
+                kind = curve.kinds[slot],
                 frequencyHz = curve.freqsHz[slot],
                 gainDb = curve.gainsDb[slot],
                 q = curve.qs[slot],
@@ -409,5 +420,5 @@ internal fun sectionGainDb(
 /** How much of a curve's peak boost [preampFor] takes back; [PeakLimiter] covers the rest. */
 private const val MAKEUP_FRACTION = 0.5f
 
-/** Enough to find the peak of a curve this smooth without wasting time on it. */
-private const val RESPONSE_POINTS = 96
+/** Dense log sampling keeps narrow parametric boosts inside the preamp estimate. */
+private const val RESPONSE_POINTS = 512

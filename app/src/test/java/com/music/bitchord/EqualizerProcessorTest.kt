@@ -5,6 +5,7 @@ import androidx.media3.common.audio.AudioProcessor
 import com.music.bitchord.playback.EqLayout
 import com.music.bitchord.playback.EqualizerPreset
 import com.music.bitchord.playback.EqualizerProcessor
+import com.music.bitchord.playback.FilterKind
 import com.music.bitchord.playback.ParametricBand
 import com.music.bitchord.playback.ParametricLayout
 import com.music.bitchord.playback.PeakLimiter
@@ -262,6 +263,32 @@ class EqualizerProcessorTest {
             "a 250 Hz band should be gone by 4 kHz",
             abs(measure(low, 4_000.0) - lowCurve.preampDb) < 1.0,
         )
+    }
+
+    @Test
+    fun `parametric low and high shelf modes affect the correct side of the spectrum`() {
+        val lowCurve = parametricCurve(
+            listOf(ParametricBand(250f, 0.707f, 8f, kind = FilterKind.LOW_SHELF)),
+        )
+        val highCurve = parametricCurve(
+            listOf(ParametricBand(4_000f, 0.707f, 8f, kind = FilterKind.HIGH_SHELF)),
+        )
+        val low = EqualizerProcessor().also { it.setTuning(true, lowCurve, 0f) }
+        val high = EqualizerProcessor().also { it.setTuning(true, highCurve, 0f) }
+
+        val lowBass = measure(low, 40.0) - lowCurve.preampDb
+        val lowTreble = measure(low, 12_000.0) - lowCurve.preampDb
+        val highBass = measure(high, 40.0) - highCurve.preampDb
+        val highTreble = measure(high, 12_000.0) - highCurve.preampDb
+        assertTrue("LSQ should lift bass more than treble: $lowBass vs $lowTreble", lowBass > lowTreble + 5.0)
+        assertTrue("HSQ should lift treble more than bass: $highTreble vs $highBass", highTreble > highBass + 5.0)
+    }
+
+    @Test
+    fun `parametric gain range exceeds five decibels in both directions`() {
+        assertEquals(24f, ParametricLayout.RANGE_DB)
+        assertEquals(24f, ParametricBand(1_000f, 1f, 99f).withGain(99f).gainDb)
+        assertEquals(-24f, ParametricBand(1_000f, 1f, -99f).withGain(-99f).gainDb)
     }
 
     /** Q is the whole point of a parametric band, so it has to actually narrow. */
